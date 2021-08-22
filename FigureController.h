@@ -37,5 +37,15 @@ public:
         board[from.second][from.first] = NONE;
         history.emplace_back(from, to);
         board[to.second][to.first]._coords = to;
+        board[to.second][to.first]._is_moved = true;
     };
+
+    virtual bool is_correct_move(pair<pair<int, int>, pair<int, int>> move_to_check, const Board &board,
+                                 History &history, const pair<int, int> &king_position) {
+        vector<pair<int, int>> possible_moves = get_moves(move_to_check.first, board, history, king_position);
+        for (auto move : possible_moves) {
+            if (move == move_to_check.second) return true;
+        }
+        return false;
+    }
 };
