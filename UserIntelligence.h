@@ -4,7 +4,7 @@
 
 class UserIntelligence : public Intelligence {
 public:
-    explicit UserIntelligence(Color color, pair<int, int> king_position) : Intelligence(color, king_position) {}
+    UserIntelligence(Color color, pair<int, int> king_position) : Intelligence(color, king_position) {}
 
     void make_move(Board &board, History &history) override;
 };
