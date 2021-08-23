@@ -67,6 +67,8 @@ void UserIntelligence::make_move(Board &board, History &history) {
                 if (str == "Q" || str == "q") promote_to = Type::QUEEN;
                 controller_container[board[from.second][from.first]._type]->make_move(from, to, board, history,
                                                                                       promote_to);
+                if(board[to.second][to.first]._type == Type::KING)
+                    _king_position = to;
                 return;
             }
         }

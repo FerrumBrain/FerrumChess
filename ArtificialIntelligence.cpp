@@ -13,10 +13,13 @@ void ArtificialIntelligence::make_move(Board &board, History &history) {
             }
         }
     }
-    int index = rand() % possible_moves.size();
+
+    int index = gen() % possible_moves.size();
     Type type = board[possible_moves[index].first.second][possible_moves[index].first.first]._type, promote_to = Type::EMPTY;
     if(type == Type::PAWN && possible_moves[index].second.second == 7) {
-        promote_to = Type(rand() % 6 + 1);
+        promote_to = Type(gen() % 6 + 1);
     }
     controller_container[type]->make_move(possible_moves[index].first, possible_moves[index].second, board, history, promote_to);
+    if(board[possible_moves[index].second.second][possible_moves[index].second.first]._type == Type::KING)
+        _king_position = possible_moves[index].second;
 }
