@@ -1,4 +1,4 @@
-#include "../include/controllers/FigureController.h"
+#include "../../include/controllers/FigureController.h"
 
 void FigureController::make_move(const std::pair<int, int> &from, const std::pair<int, int> &to, Board &board, History &history,
                        Type promote_to) {

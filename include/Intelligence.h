@@ -11,7 +11,7 @@
 
 class Intelligence {
 public:
-    virtual void make_move(Board &board, History &history) = 0;
+    virtual void make_move(Board &board, History &history, int &last_move_for_50move) = 0;
 
     std::map<Type, std::shared_ptr<FigureController>> controller_container;
     std::pair<int, int> _king_position;

@@ -4,7 +4,7 @@
 
 static std::pair<Type, Color> char_to_type_and_color(char c) {
     std::pair<Type, Color> ans = {Type::EMPTY, isupper(c) == 0 ? Color::BLACK : Color::WHITE};
-    c = tolower(c);
+    c = static_cast<char>(tolower(c));
     switch (c) {
         case 'r':
             ans.first = Type::ROOK;
@@ -35,8 +35,10 @@ std::pair<std::pair<int, int>, std::pair<int, int>> GameController::handle_from_
     std::pair<std::pair<int, int>, std::pair<int, int>> ans;
 
     std::string position, move, castles, en_passant_square;
-    std::cout << "Paste FEN of your position (without last two fields): ";
-    std::cin >> position >> move >> castles >> en_passant_square;
+    std::cout << "Paste FEN of your position (without last field):\n";
+    std::cin >> position >> move >> castles >> en_passant_square >> last_move_for_50move;
+
+    last_move_for_50move *= -2;
 
     board = Board(8, std::vector<Figure>(8, Figure(NONE)));
     int row = 7, column = 0;
@@ -131,7 +133,7 @@ GameController::GameController()
             break;
         }
         if (input == "P") {
-            std::tie(white_king_position, black_king_position) = handle_from_position(); // TODO: Incorrect FEN, move counter
+            std::tie(white_king_position, black_king_position) = handle_from_position(); // TODO: Incorrect FEN
             from_position = true;
             break;
         }
@@ -247,58 +249,45 @@ bool GameController::is_stalemate(const Intelligence &intelligence) {
     return possible_moves.empty() && !kingController.is_attacked(intelligence._king_position, opposite_color, board);
 }
 
+bool GameController::is_finished(const Intelligence &intelligence) {
+    if (is_mate(intelligence)) {
+        print_board();
+        std::cout << "Mate. " << to_string(intelligence._color) << " won!" << std::endl;
+        return true;
+    }
+
+    if (is_stalemate(intelligence)) {
+        print_board();
+        std::cout << "Stalemate. Draw!" << std::endl;
+        return true;
+    }
+
+    if (history.size() - last_move_for_50move == 100) {
+        print_board();
+        std::cout << "50-move rule. Draw!" << std::endl;
+        return true;
+    }
+    return false;
+}
+
 void GameController::play_game() {
     int i = 0;
     while (true) {
         i++;
         if (!(is_white_first_to_move ^ (user_color == Color::WHITE))) {
             print_board();
-            ui.make_move(board, history);
-            if (is_mate(ai)) {
-                print_board();
-                std::cout << "Mate. You won!" << std::endl;
-                return;
-            }
-            if (is_stalemate(ai)) {
-                print_board();
-                std::cout << "Stalemate. Draw!" << std::endl;
-                return;
-            }
-            ai.make_move(board, history);
-            if (is_mate(ui)) {
-                print_board();
-                std::cout << "Mate. You lost!" << std::endl;
-                return;
-            }
-            if (is_stalemate(ui)) {
-                print_board();
-                std::cout << "Stalemate. Draw!" << std::endl;
-                return;
-            }
+            ui.make_move(board, history, last_move_for_50move);
+            if(is_finished(ai)) return;
+
+            ai.make_move(board, history, last_move_for_50move);
+            if(is_finished(ui)) return;
         } else {
-            ai.make_move(board, history);
-            if (is_mate(ui)) {
-                print_board();
-                std::cout << "Mate. You lost!" << std::endl;
-                return;
-            }
-            if (is_stalemate(ui)) {
-                print_board();
-                std::cout << "Stalemate. Draw!" << std::endl;
-                return;
-            }
+            ai.make_move(board, history, last_move_for_50move);
+            if(is_finished(ui)) return;
+
             print_board();
-            ui.make_move(board, history);
-            if (is_mate(ai)) {
-                print_board();
-                std::cout << "Mate. You won!" << std::endl;
-                return;
-            }
-            if (is_stalemate(ai)) {
-                print_board();
-                std::cout << "Stalemate. Draw!" << std::endl;
-                return;
-            }
+            ui.make_move(board, history, last_move_for_50move);
+            if(is_finished(ai)) return;
         }
     }
 }

@@ -1,6 +1,6 @@
 #include "../include/UserIntelligence.h"
 
-void UserIntelligence::make_move(Board &board, History &history) {
+void UserIntelligence::make_move(Board &board, History &history, int &last_move_for_50move) {
     std::pair<int, int> from, to;
     bool flag;
     std::string str, str_raw;
@@ -65,6 +65,11 @@ void UserIntelligence::make_move(Board &board, History &history) {
                 if (str == "B" || str == "b") promote_to = Type::BISHOP;
                 if (str == "R" || str == "r") promote_to = Type::ROOK;
                 if (str == "Q" || str == "q") promote_to = Type::QUEEN;
+
+                if(board[from.second][from.first]._type == Type::PAWN || board[to.second][to.first]._type != Type::EMPTY) {
+                    last_move_for_50move = static_cast<int>(history.size()) + 1;
+                }
+
                 controller_container[board[from.second][from.first]._type]->make_move(from, to, board, history,
                                                                                       promote_to);
                 if(board[to.second][to.first]._type == Type::KING)

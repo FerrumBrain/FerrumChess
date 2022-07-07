@@ -1,4 +1,4 @@
-#include "../include/controllers/KingController.h"
+#include "../../include/controllers/KingController.h"
 
 bool KingController::is_attacked(std::pair<int, int> coords, Color color, const Board &board) {
     int x = coords.first, y = coords.second;

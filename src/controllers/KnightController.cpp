@@ -1,5 +1,5 @@
-#include "../include/controllers/KnightController.h"
-#include "../include/controllers/KingController.h"
+#include "../../include/controllers/KnightController.h"
+#include "../../include/controllers/KingController.h"
 
 std::vector<std::pair<int, int>> KnightController::get_moves(std::pair<int, int> coords, const Board &board, History &history,
                                                              const std::pair<int, int> &king_position) {

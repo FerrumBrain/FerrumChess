@@ -10,15 +10,15 @@ add_definitions(-DSFML_STATIC)
 
 set(CLIENT_PROJECT_SOURCES
         src/ArtificialIntelligence.cpp
-        src/BishopController.cpp
-        src/FigureController.cpp
+        src/controllers/BishopController.cpp
+        src/controllers/FigureController.cpp
         src/GameController.cpp
-        src/KingController.cpp
-        src/KnightController.cpp
+        src/controllers/KingController.cpp
+        src/controllers/KnightController.cpp
         src/main.cpp
-        src/PawnController.cpp
-        src/QueenController.cpp
-        src/RookController.cpp
+        src/controllers/PawnController.cpp
+        src/controllers/QueenController.cpp
+        src/controllers/RookController.cpp
         src/UserIntelligence.cpp
         )
 set(CLIENT_LIBS sfml-system sfml-window sfml-graphics sfml-audio tgui)

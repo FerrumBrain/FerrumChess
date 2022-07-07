@@ -18,3 +18,14 @@ inline std::ostream &operator<<(std::ostream &os, const Color &c) {
     }
     return os;
 }
+
+inline std::string to_string(Color c) {
+    switch (c) {
+        case (Color::EMPTY):
+            return "None";
+        case (Color::WHITE):
+            return "White";
+        case (Color::BLACK):
+            return "Black";
+    }
+}

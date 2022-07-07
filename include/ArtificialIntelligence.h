@@ -12,5 +12,5 @@ public:
         gen.seed(seed);
     }
 
-    void make_move(Board &board, History &history) override;
+    void make_move(Board &board, History &history, int &last_move_for_50move) override;
 };
