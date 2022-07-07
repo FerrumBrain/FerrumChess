@@ -1,8 +1,8 @@
-#include "ArtificialIntelligence.h"
+#include "../include/ArtificialIntelligence.h"
 
 void ArtificialIntelligence::make_move(Board &board, History &history) {
-    vector<pair<pair<int, int>, pair<int, int>>> possible_moves;
-    vector<pair<int, int>> current_moves;
+    std::vector<std::pair<std::pair<int, int>, std::pair<int, int>>> possible_moves;
+    std::vector<std::pair<int, int>> current_moves;
     for(int i = 0; i < 8; i++){
         for(int j = 0; j < 8; j++){
             if(board[i][j]._color == _color){

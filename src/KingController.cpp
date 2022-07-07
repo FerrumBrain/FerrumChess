@@ -1,6 +1,6 @@
-#include "KingController.h"
+#include "../include/controllers/KingController.h"
 
-bool KingController::is_attacked(pair<int, int> coords, Color color, const Board &board) {
+bool KingController::is_attacked(std::pair<int, int> coords, Color color, const Board &board) {
     int x = coords.first, y = coords.second;
     if (x < 0 || x > 7 || y < 0 || y > 7) return false;
 
@@ -44,7 +44,7 @@ bool KingController::is_attacked(pair<int, int> coords, Color color, const Board
         }
     }
 
-    vector<bool> closed = {false, false, false, false, false, false, false, false};
+    std::vector<bool> closed = {false, false, false, false, false, false, false, false};
     for (int delta = 1; delta <= 7; delta++) {
         if (x + delta >= 0 && x + delta <= 7) {
             if (!closed[0]) {
@@ -157,14 +157,14 @@ bool KingController::is_attacked(pair<int, int> coords, Color color, const Board
     return false;
 }
 
-vector<pair<int, int>> KingController::get_moves(pair<int, int> coords, const Board &board, History &history,
-                                                 const pair<int, int> &king_position) {
+std::vector<std::pair<int, int>> KingController::get_moves(std::pair<int, int> coords, const Board &board, History &history,
+                                                           const std::pair<int, int> &king_position) {
     int x = coords.first, y = coords.second;
     if (x < 0 || x > 7 || y < 0 || y > 7 || board[y][x]._type != Type::KING)
         return {};
 
     Color color = board[y][x]._color, opponent_color = (color == Color::BLACK) ? Color::WHITE : Color::BLACK;
-    vector<pair<int, int>> all_possible_moves, correct_possible_moves;
+    std::vector<std::pair<int, int>> all_possible_moves, correct_possible_moves;
     for (int dx = -1; dx <= 1; dx++) {
         for (int dy = -1; dy <= 1; dy++) {
             if (dx == 0 && dy == 0) continue;

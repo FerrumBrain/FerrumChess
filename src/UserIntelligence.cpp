@@ -1,18 +1,18 @@
-#include "UserIntelligence.h"
+#include "../include/UserIntelligence.h"
 
 void UserIntelligence::make_move(Board &board, History &history) {
-    pair<int, int> from, to;
+    std::pair<int, int> from, to;
     bool flag;
-    string str, str_raw;
+    std::string str, str_raw;
     int i;
     while (true) {
         i = 0, flag = false;
-        cout << "From-square:" << endl;
+        std::cout << "From-square:" << std::endl;
         while (!flag) {
             str = "";
-            if (i != 0) cout << "Wrong format, try again" << endl;
+            if (i != 0) std::cout << "Wrong format, try again" << std::endl;
             i++;
-            getline(cin, str_raw);
+            getline(std::cin, str_raw);
             for (char j : str_raw) {
                 if (j != ' ') str += j;
             }
@@ -21,15 +21,15 @@ void UserIntelligence::make_move(Board &board, History &history) {
                 if (str[1] >= '1' && str[1] <= '8')
                     flag = true;
         }
-        cout << endl;
+        std::cout << std::endl;
         from = {(int) (str[0] - 'a'), (int) (str[1] - '1')};
         flag = false, i = 0;
-        cout << "To-square:" << endl;
+        std::cout << "To-square:" << std::endl;
         while (!flag) {
             str = "";
-            if (i != 0) cout << "Wrong format, try again" << endl;
+            if (i != 0) std::cout << "Wrong format, try again" << std::endl;
             i++;
-            getline(cin, str_raw);
+            getline(std::cin, str_raw);
             for (char j : str_raw) {
                 if (j != ' ') str += j;
             }
@@ -38,19 +38,19 @@ void UserIntelligence::make_move(Board &board, History &history) {
                 if (str[1] >= '1' && str[1] <= '8')
                     flag = true;
         }
-        cout << endl;
+        std::cout << std::endl;
         to = {(int) (str[0] - 'a'), (int) (str[1] - '1')};
         if (board[from.second][from.first]._type != Type::EMPTY) {
             if (controller_container[board[from.second][from.first]._type]->is_correct_move({from, to}, board, history,
                                                                                            _king_position)) {
                 if (to.second == 7 && board[from.second][from.first]._type == Type::PAWN) {
-                    cout << "Promote to:" << endl;
+                    std::cout << "Promote to:" << std::endl;
                     flag = false, i = 0;
                     while (!flag) {
                         str = "";
-                        if (i != 0) cout << "Wrong format, try again" << endl;
+                        if (i != 0) std::cout << "Wrong format, try again" << std::endl;
                         i++;
-                        getline(cin, str_raw);
+                        getline(std::cin, str_raw);
                         for (char j : str_raw) {
                             if (j != ' ') str += j;
                         }
@@ -58,7 +58,7 @@ void UserIntelligence::make_move(Board &board, History &history) {
                         flag = str[0] == 'N' || str[0] == 'B' || str[0] == 'R' || str[0] == 'Q' ||
                                str[0] == 'n' || str[0] == 'b' || str[0] == 'r' || str[0] == 'q';
                     }
-                    cout << endl;
+                    std::cout << std::endl;
                 }
                 Type promote_to = Type::EMPTY;
                 if (str == "N" || str == "n") promote_to = Type::KNIGHT;
@@ -72,6 +72,6 @@ void UserIntelligence::make_move(Board &board, History &history) {
                 return;
             }
         }
-        cout << "Impossible move, try again" << endl;
+        std::cout << "Impossible move, try again" << std::endl;
     }
 }

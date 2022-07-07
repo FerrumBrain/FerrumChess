@@ -4,7 +4,7 @@ enum class Color : int {
     BLACK
 };
 
-inline ostream &operator<<(ostream &os, const Color &c) {
+inline std::ostream &operator<<(std::ostream &os, const Color &c) {
     switch (c) {
         case (Color::EMPTY):
             os << "-";

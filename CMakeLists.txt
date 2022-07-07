@@ -3,4 +3,24 @@ project(FerrumChess)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(FerrumChess main.cpp Type.h Figure.h Color.h FigureController.h KnightController.cpp KnightController.h BishopController.cpp BishopController.h RookController.cpp RookController.h QueenController.cpp QueenController.h constants.h KingController.cpp KingController.h PawnController.cpp PawnController.h Intelligence.h UserIntelligence.cpp UserIntelligence.h ArtificialIntelligence.cpp ArtificialIntelligence.h FigureController.cpp GameController.cpp GameController.h)
+find_package(TGUI 0.10 COMPONENTS tgui)
+
+find_package(SFML 2.5 COMPONENTS system window graphics audio REQUIRED)
+add_definitions(-DSFML_STATIC)
+
+set(CLIENT_PROJECT_SOURCES
+        src/ArtificialIntelligence.cpp
+        src/BishopController.cpp
+        src/FigureController.cpp
+        src/GameController.cpp
+        src/KingController.cpp
+        src/KnightController.cpp
+        src/main.cpp
+        src/PawnController.cpp
+        src/QueenController.cpp
+        src/RookController.cpp
+        src/UserIntelligence.cpp
+        )
+set(CLIENT_LIBS sfml-system sfml-window sfml-graphics sfml-audio tgui)
+add_executable(FerrumChess ${CLIENT_PROJECT_SOURCES})
+target_link_libraries(FerrumChess ${CLIENT_LIBS})

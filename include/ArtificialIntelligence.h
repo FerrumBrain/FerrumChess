@@ -6,8 +6,8 @@
 
 class ArtificialIntelligence : public Intelligence {
 public:
-    mt19937 gen;
-    ArtificialIntelligence(Color color, pair<int, int> king_position) : Intelligence(color, king_position) {
+    std::mt19937 gen;
+    ArtificialIntelligence(Color color, std::pair<int, int> king_position) : Intelligence(color, king_position) {
         long long seed = time(nullptr);
         gen.seed(seed);
     }

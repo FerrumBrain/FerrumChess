@@ -1,15 +1,15 @@
-#include "PawnController.h"
-#include "KingController.h"
+#include "../include/controllers/PawnController.h"
+#include "../include/controllers/KingController.h"
 
-vector<pair<int, int>> PawnController::get_moves(pair<int, int> coords, const Board &board, History &history,
-                                                 const pair<int, int> &king_position) {
+std::vector<std::pair<int, int>> PawnController::get_moves(std::pair<int, int> coords, const Board &board, History &history,
+                                                           const std::pair<int, int> &king_position) {
     int x = coords.first, y = coords.second;
     if (x < 0 || x > 7 || y < 0 || y > 7 || board[y][x]._type != Type::PAWN)
         return {};
 
     Color color = board[y][x]._color, opposite_color = (color == Color::WHITE) ? Color::BLACK : Color::WHITE;
     int direction = (color == Color::WHITE) ? 1 : -1, en_passant = (color == Color::WHITE) ? 4 : 3;
-    vector<pair<int, int>> all_possible_moves, correct_possible_moves;
+    std::vector<std::pair<int, int>> all_possible_moves, correct_possible_moves;
 
     if (board[y + direction][x] == NONE) all_possible_moves.emplace_back(x, y + direction);
     if (!all_possible_moves.empty() && !board[y][x]._is_moved && board[y + 2 * direction][x] == NONE)

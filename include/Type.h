@@ -1,7 +1,5 @@
 #include <iostream>
 
-using namespace std;
-
 enum class Type : int {
     EMPTY = 0,
     PAWN = 1,
@@ -12,7 +10,7 @@ enum class Type : int {
     KING = 6
 };
 
-inline ostream &operator<<(ostream &os, const Type &t) {
+inline std::ostream &operator<<(std::ostream &os, const Type &t) {
     switch(t){
         case(Type::EMPTY):
             os << "-";

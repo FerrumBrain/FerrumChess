@@ -1,6 +1,6 @@
-#include "FigureController.h"
+#include "../include/controllers/FigureController.h"
 
-void FigureController::make_move(const pair<int, int> &from, const pair<int, int> &to, Board &board, History &history,
+void FigureController::make_move(const std::pair<int, int> &from, const std::pair<int, int> &to, Board &board, History &history,
                        Type promote_to) {
     int step = (board[from.first][from.second]._color == Color::WHITE) ? 1 : -1;
 

@@ -1,15 +1,15 @@
-#include "BishopController.h"
-#include "KingController.h"
+#include "../include/controllers/BishopController.h"
+#include "../include/controllers/KingController.h"
 
-vector<pair<int, int>> BishopController::get_moves(pair<int, int> coords, const Board &board, History &history,
-                                                   const pair<int, int> &king_position) {
+std::vector<std::pair<int, int>> BishopController::get_moves(std::pair<int, int> coords, const Board &board, History &history,
+                                                             const std::pair<int, int> &king_position) {
     int x = coords.first, y = coords.second;
     if (x < 0 || x > 7 || y < 0 || y > 7 || board[y][x]._type != Type::BISHOP)
         return {};
 
     Color color = board[y][x]._color, opposite_color = (color == Color::WHITE) ? Color::BLACK : Color::WHITE;
-    vector<pair<int, int>> all_possible_moves, correct_possible_moves;
-    vector<bool> closed = {false, false, false, false};
+    std::vector<std::pair<int, int>> all_possible_moves, correct_possible_moves;
+    std::vector<bool> closed = {false, false, false, false};
     for (int delta = 1; delta <= 7; delta++) {
         if (x + delta >= 0 && x + delta <= 7 && y + delta >= 0 && y + delta <= 7) {
             if (!closed[0]) {
