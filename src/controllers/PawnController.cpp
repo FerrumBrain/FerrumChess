@@ -1,15 +1,15 @@
 #include "../../include/controllers/PawnController.h"
 #include "../../include/controllers/KingController.h"
 
-std::vector<std::pair<int, int>> PawnController::get_moves(std::pair<int, int> coords, const Board &board, History &history,
-                                                           const std::pair<int, int> &king_position) {
-    int x = coords.first, y = coords.second;
+std::vector<Cell> PawnController::get_moves(Cell coords, const Board &board, History &history,
+                                            const Cell &king_position) {
+    int x = coords.x, y = coords.y;
     if (x < 0 || x > 7 || y < 0 || y > 7 || board[y][x]._type != Type::PAWN)
         return {};
 
     Color color = board[y][x]._color, opposite_color = (color == Color::WHITE) ? Color::BLACK : Color::WHITE;
     int direction = (color == Color::WHITE) ? 1 : -1, en_passant = (color == Color::WHITE) ? 4 : 3;
-    std::vector<std::pair<int, int>> all_possible_moves, correct_possible_moves;
+    std::vector<Cell> all_possible_moves, correct_possible_moves;
 
     if (board[y + direction][x] == NONE) all_possible_moves.emplace_back(x, y + direction);
     if (!all_possible_moves.empty() && !board[y][x]._is_moved && board[y + 2 * direction][x] == NONE)
@@ -20,9 +20,9 @@ std::vector<std::pair<int, int>> PawnController::get_moves(std::pair<int, int> c
         all_possible_moves.emplace_back(x - 1, y + direction);
 
     if (!history.empty()) {
-        int last_move_x = history[history.size() - 1].second.first,
-                last_move_y = history[history.size() - 1].second.second,
-                delta_last_move_y = abs(history[history.size() - 1].first.second - last_move_y);
+        int last_move_x = history[history.size() - 1].to.x,
+                last_move_y = history[history.size() - 1].to.y,
+                delta_last_move_y = abs(history[history.size() - 1].from.y - last_move_y);
         if (y == en_passant && board[last_move_y][last_move_x]._type == Type::PAWN && last_move_x == x + 1 &&
             delta_last_move_y == 2)
             all_possible_moves.emplace_back(x + 1, y + direction);
@@ -35,7 +35,7 @@ std::vector<std::pair<int, int>> PawnController::get_moves(std::pair<int, int> c
     Board board_copy;
     for (auto to : all_possible_moves) {
         board_copy = board;
-        make_move(coords, to, board_copy, history, Type::PAWN);
+        make_move({coords, to}, board_copy, history, Type::PAWN);
         if (!kingController.is_attacked(king_position, opposite_color, board_copy))
             correct_possible_moves.emplace_back(to);
         history.pop_back();

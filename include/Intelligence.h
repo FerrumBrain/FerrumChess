@@ -14,10 +14,10 @@ public:
     virtual void make_move(Board &board, History &history, int &last_move_for_50move) = 0;
 
     std::map<Type, std::shared_ptr<FigureController>> controller_container;
-    std::pair<int, int> _king_position;
+    Cell _king_position;
     Color _color;
 
-    Intelligence(Color color, std::pair<int, int> king_position) : _color(color),
+    Intelligence(Color color, Cell king_position) : _color(color),
                                                                    _king_position(std::move(king_position)) {
         controller_container[Type::PAWN] = std::make_shared<PawnController>();
         controller_container[Type::KNIGHT] = std::make_shared<KnightController>();

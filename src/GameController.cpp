@@ -1,5 +1,5 @@
 #include "../include/GameController.h"
-#include <sstream>
+#include "../include/UIController.h"
 #include <cassert>
 
 static std::pair<Type, Color> char_to_type_and_color(char c) {
@@ -31,18 +31,16 @@ static std::pair<Type, Color> char_to_type_and_color(char c) {
     return ans;
 }
 
-std::pair<std::pair<int, int>, std::pair<int, int>> GameController::handle_from_position() {
-    std::pair<std::pair<int, int>, std::pair<int, int>> ans;
+std::pair<Cell, Cell> GameController::handle_from_position() {
+    std::pair<Cell, Cell> ans;
 
-    std::string position, move, castles, en_passant_square;
-    std::cout << "Paste FEN of your position (without last field):\n";
-    std::cin >> position >> move >> castles >> en_passant_square >> last_move_for_50move;
+    FEN fen = UIController::get_fen();
 
-    last_move_for_50move *= -2;
+    last_move_for_50move = fen.last_move * -2;
 
     board = Board(8, std::vector<Figure>(8, Figure(NONE)));
     int row = 7, column = 0;
-    for (char c : position) {
+    for (char c : fen.position) {
         if (c == '/') {
             column = 0;
             row--;
@@ -55,12 +53,12 @@ std::pair<std::pair<int, int>, std::pair<int, int>> GameController::handle_from_
                 if (type == Type::KING) {
                     if (color == Color::WHITE) {
                         ans.first = {column, row};
-                        if (isupper(castles[0]) != 0) {
+                        if (isupper(fen.castles[0]) != 0) {
                             is_moved = false;
                         }
                     } else {
                         ans.second = {column, row};
-                        if (std::any_of(castles.begin(), castles.end(), [](char c) {
+                        if (std::any_of(fen.castles.begin(), fen.castles.end(), [](char c) {
                             return islower(c) != 0;
                         })) {
                             is_moved = false;
@@ -69,25 +67,25 @@ std::pair<std::pair<int, int>, std::pair<int, int>> GameController::handle_from_
                 }
 
                 if (column == 0 && row == 0) {
-                    if (std::any_of(castles.begin(), castles.end(), [](char c) {
+                    if (std::any_of(fen.castles.begin(), fen.castles.end(), [](char c) {
                         return c == 'Q';
                     })) {
                         is_moved = false;
                     }
                 } else if (column == 7 && row == 0) {
-                    if (std::any_of(castles.begin(), castles.end(), [](char c) {
+                    if (std::any_of(fen.castles.begin(), fen.castles.end(), [](char c) {
                         return c == 'K';
                     })) {
                         is_moved = false;
                     }
                 } else if (column == 0 && row == 7) {
-                    if (std::any_of(castles.begin(), castles.end(), [](char c) {
+                    if (std::any_of(fen.castles.begin(), fen.castles.end(), [](char c) {
                         return c == 'q';
                     })) {
                         is_moved = false;
                     }
                 } else if (column == 7 && row == 7) {
-                    if (std::any_of(castles.begin(), castles.end(), [](char c) {
+                    if (std::any_of(fen.castles.begin(), fen.castles.end(), [](char c) {
                         return c == 'k';
                     })) {
                         is_moved = false;
@@ -100,13 +98,13 @@ std::pair<std::pair<int, int>, std::pair<int, int>> GameController::handle_from_
         }
     }
 
-    is_white_first_to_move = (move == "w");
+    is_white_first_to_move = (fen.move == "w");
 
     history.clear();
-    if (en_passant_square != "-") {
-        int x = static_cast<int>(en_passant_square[0] - 'a'), y = static_cast<int>(en_passant_square[1] - '0');
-        history.emplace_back(std::make_pair(x, y - (is_white_first_to_move ? -1 : 1)),
-                             std::make_pair(x, y + (is_white_first_to_move ? -1 : 1)));
+    if (fen.en_passant_square != "-") {
+        int x = static_cast<int>(fen.en_passant_square[0] - 'a'), y = static_cast<int>(fen.en_passant_square[1] - '0');
+        history.emplace_back(Cell(x, y - (is_white_first_to_move ? -1 : 1)),
+                             Cell(x, y + (is_white_first_to_move ? -1 : 1)));
     }
 
     return ans;
@@ -114,48 +112,20 @@ std::pair<std::pair<int, int>, std::pair<int, int>> GameController::handle_from_
 
 GameController::GameController()
         : ui(Color::EMPTY, {-1, -1}), ai(Color::EMPTY, {-1, -1}) {
-    std::string raw_input, input;
     bool from_position;
-    std::pair<int, int> white_king_position, black_king_position;
+    Cell white_king_position, black_king_position;
     board = Board(8, std::vector<Figure>(8, Figure(NONE)));
-    std::cout
-            << R"(If you want to play new game, type "N". If you want to play from your own position, type "P")"
-            << std::endl;
-    while (true) {
-        input = "";
-        getline(std::cin, raw_input);
-        for (char c: raw_input) {
-            if (isspace(c) != 0) continue;
-            input += c;
-        }
-        if (input == "N") {
-            from_position = false;
-            break;
-        }
-        if (input == "P") {
-            std::tie(white_king_position, black_king_position) = handle_from_position(); // TODO: Incorrect FEN
-            from_position = true;
-            break;
-        }
+
+    Mode mode = UIController::start_game();
+    if (mode == Mode::NEW_GAME) {
+        from_position = false;
+    } else {
+        std::tie(white_king_position, black_king_position) = handle_from_position(); // TODO: Incorrect FEN
+        from_position = true;
     }
 
-    std::cout << R"(If you want to play with white pieces, type "W". Else type "B")" << std::endl;
-    while (true) {
-        input = "";
-        getline(std::cin, raw_input);
-        for (char c: raw_input) {
-            if (c == ' ') continue;
-            input += c;
-        }
-        if (input == "W") {
-            user_color = Color::WHITE;
-            break;
-        }
-        if (input == "B") {
-            user_color = Color::BLACK;
-            break;
-        }
-    }
+    user_color = UIController::choose_color();
+
     if (from_position) {
         ui = UserIntelligence(user_color, (user_color == Color::BLACK) ? black_king_position : white_king_position);
         ai = ArtificialIntelligence((user_color == Color::WHITE) ? Color::BLACK : Color::WHITE,
@@ -190,28 +160,9 @@ GameController::GameController()
     }
 }
 
-void GameController::print_board() {
-    if (user_color == Color::WHITE) {
-        for (int i = 7; i >= 0; i--) {
-            for (int j = 0; j < 8; j++) {
-                std::cout << board[i][j]._color << board[i][j]._type << " ";
-            }
-            std::cout << std::endl;
-        }
-    } else {
-        for (int i = 0; i < 8; i++) {
-            for (int j = 7; j >= 0; j--) {
-                std::cout << board[i][j]._color << board[i][j]._type << " ";
-            }
-            std::cout << std::endl;
-        }
-    }
-    std::cout << std::endl;
-}
-
 bool GameController::is_mate(const Intelligence &intelligence) {
-    std::vector<std::pair<std::pair<int, int>, std::pair<int, int>>> possible_moves;
-    std::vector<std::pair<int, int>> current_moves;
+    std::vector<Move> possible_moves;
+    std::vector<Cell> current_moves;
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             if (board[i][j]._color == intelligence._color) {
@@ -230,8 +181,8 @@ bool GameController::is_mate(const Intelligence &intelligence) {
 }
 
 bool GameController::is_stalemate(const Intelligence &intelligence) {
-    std::vector<std::pair<std::pair<int, int>, std::pair<int, int>>> possible_moves;
-    std::vector<std::pair<int, int>> current_moves;
+    std::vector<Move> possible_moves;
+    std::vector<Cell> current_moves;
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             if (board[i][j]._color == intelligence._color) {
@@ -251,43 +202,36 @@ bool GameController::is_stalemate(const Intelligence &intelligence) {
 
 bool GameController::is_finished(const Intelligence &intelligence) {
     if (is_mate(intelligence)) {
-        print_board();
-        std::cout << "Mate. " << to_string(intelligence._color) << " won!" << std::endl;
+        UIController::finish_game(board, intelligence._color, Result::CHECKMATE_WIN);
         return true;
     }
 
     if (is_stalemate(intelligence)) {
-        print_board();
-        std::cout << "Stalemate. Draw!" << std::endl;
+        UIController::finish_game(board, intelligence._color, Result::STALEMATE_DRAW);
         return true;
     }
 
     if (history.size() - last_move_for_50move == 100) {
-        print_board();
-        std::cout << "50-move rule. Draw!" << std::endl;
+        UIController::finish_game(board, intelligence._color, Result::FIFTY_MOVE_DRAW);
         return true;
     }
     return false;
 }
 
 void GameController::play_game() {
+    std::vector<Intelligence*> players;
+    if (!(is_white_first_to_move ^ (user_color == Color::WHITE))) {
+        players = {&ui, &ai};
+    } else {
+        players = {&ai, &ui};
+    }
+
     int i = 0;
     while (true) {
-        i++;
-        if (!(is_white_first_to_move ^ (user_color == Color::WHITE))) {
-            print_board();
-            ui.make_move(board, history, last_move_for_50move);
-            if(is_finished(ai)) return;
-
-            ai.make_move(board, history, last_move_for_50move);
-            if(is_finished(ui)) return;
-        } else {
-            ai.make_move(board, history, last_move_for_50move);
-            if(is_finished(ui)) return;
-
-            print_board();
-            ui.make_move(board, history, last_move_for_50move);
-            if(is_finished(ai)) return;
-        }
+            if(players[i] == &ui)
+                UIController::show_board(board, user_color);
+            players[i]->make_move(board, history, last_move_for_50move);
+            if (is_finished(*players[1 - i])) return;
+            i = 1 - i;
     }
 }

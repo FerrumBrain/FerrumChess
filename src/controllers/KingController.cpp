@@ -1,7 +1,7 @@
 #include "../../include/controllers/KingController.h"
 
-bool KingController::is_attacked(std::pair<int, int> coords, Color color, const Board &board) {
-    int x = coords.first, y = coords.second;
+bool KingController::is_attacked(Cell coords, Color color, const Board &board) {
+    int x = coords.x, y = coords.y;
     if (x < 0 || x > 7 || y < 0 || y > 7) return false;
 
     if (color == Color::BLACK) {
@@ -157,14 +157,14 @@ bool KingController::is_attacked(std::pair<int, int> coords, Color color, const 
     return false;
 }
 
-std::vector<std::pair<int, int>> KingController::get_moves(std::pair<int, int> coords, const Board &board, History &history,
-                                                           const std::pair<int, int> &king_position) {
-    int x = coords.first, y = coords.second;
+std::vector<Cell> KingController::get_moves(Cell coords, const Board &board, History &history,
+                                            const Cell &king_position) {
+    int x = coords.x, y = coords.y;
     if (x < 0 || x > 7 || y < 0 || y > 7 || board[y][x]._type != Type::KING)
         return {};
 
     Color color = board[y][x]._color, opponent_color = (color == Color::BLACK) ? Color::WHITE : Color::BLACK;
-    std::vector<std::pair<int, int>> all_possible_moves, correct_possible_moves;
+    std::vector<Cell> all_possible_moves, correct_possible_moves;
     for (int dx = -1; dx <= 1; dx++) {
         for (int dy = -1; dy <= 1; dy++) {
             if (dx == 0 && dy == 0) continue;
@@ -189,7 +189,7 @@ std::vector<std::pair<int, int>> KingController::get_moves(std::pair<int, int> c
 
     for (auto to : all_possible_moves) {
         Board board_copy = board;
-        make_move(coords, to, board_copy, history, Type::EMPTY);
+        make_move({coords, to}, board_copy, history, Type::EMPTY);
         if (!is_attacked(to, opponent_color, board_copy))
             correct_possible_moves.emplace_back(to);
         history.pop_back();

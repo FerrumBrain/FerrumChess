@@ -1,14 +1,14 @@
 #include "../../include/controllers/QueenController.h"
 #include "../../include/controllers/KingController.h"
 
-std::vector<std::pair<int, int>> QueenController::get_moves(std::pair<int, int> coords, const Board &board, History &history,
-                                                            const std::pair<int, int> &king_position) {
-    int x = coords.first, y = coords.second;
+std::vector<Cell> QueenController::get_moves(Cell coords, const Board &board, History &history,
+                                            const Cell &king_position) {
+    int x = coords.x, y = coords.y;
     if (x < 0 || x > 7 || y < 0 || y > 7 || board[y][x]._type != Type::QUEEN)
         return {};
 
     Color color = board[y][x]._color, opposite_color = (color == Color::WHITE) ? Color::BLACK : Color::WHITE;
-    std::vector<std::pair<int, int>> all_possible_moves, correct_possible_moves;
+    std::vector<Cell> all_possible_moves, correct_possible_moves;
     std::vector<bool> closed = {false, false, false, false, false, false, false, false};
     for (int delta = 1; delta <= 7; delta++) {
         if (x + delta >= 0 && x + delta <= 7) {
@@ -112,7 +112,7 @@ std::vector<std::pair<int, int>> QueenController::get_moves(std::pair<int, int> 
     Board board_copy;
     for (auto to : all_possible_moves) {
         board_copy = board;
-        make_move(coords, to, board_copy, history, Type::EMPTY);
+        make_move({coords, to}, board_copy, history, Type::EMPTY);
         if (!kingController.is_attacked(king_position, opposite_color, board_copy))
             correct_possible_moves.emplace_back(to);
         history.pop_back();

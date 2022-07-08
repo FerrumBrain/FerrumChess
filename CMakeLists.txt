@@ -20,6 +20,7 @@ set(CLIENT_PROJECT_SOURCES
         src/controllers/QueenController.cpp
         src/controllers/RookController.cpp
         src/UserIntelligence.cpp
+        src/UIController.cpp
         )
 set(CLIENT_LIBS sfml-system sfml-window sfml-graphics sfml-audio tgui)
 add_executable(FerrumChess ${CLIENT_PROJECT_SOURCES})
