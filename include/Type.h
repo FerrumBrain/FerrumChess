@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cassert>
 
 enum class Type : int {
     EMPTY = 0,
@@ -12,27 +13,29 @@ enum class Type : int {
 
 inline std::ostream &operator<<(std::ostream &os, const Type &t) {
     switch(t){
-        case(Type::EMPTY):
+        case Type::EMPTY:
             os << "-";
             break;
-        case(Type::PAWN):
+        case Type::PAWN:
             os << "P";
             break;
-        case(Type::KNIGHT):
+        case Type::KNIGHT:
             os << "N";
             break;
-        case(Type::BISHOP):
+        case Type::BISHOP:
             os << "B";
             break;
-        case(Type::ROOK):
+        case Type::ROOK:
             os << "R";
             break;
-        case(Type::QUEEN):
+        case Type::QUEEN:
             os << "Q";
             break;
-        case(Type::KING):
+        case Type::KING:
             os << "K";
             break;
+        default:
+            assert("Something went wrong");
     }
     return os;
 }

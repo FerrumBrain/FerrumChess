@@ -8,7 +8,10 @@ enum class Mode {
 };
 
 struct FEN {
-    std::string position, move, castles, en_passant_square;
+    std::string position;
+    std::string move;
+    std::string castles;
+    std::string en_passant_square;
     int last_move;
 };
 
@@ -36,6 +39,6 @@ namespace UIController {
 
     void impossible_move();
 
-    void finish_game(const Board &board, Color color, Result result);
+    void finish_game(const Board &board, Color player, Result result, Color winner = Color::EMPTY);
 
 }

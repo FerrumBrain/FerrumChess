@@ -12,12 +12,8 @@ struct Figure {
     Figure(Type type, Color color, int x, int y, bool is_moved = false) : _type(type), _color(color), _coords{x, y},
                                                                           _is_moved(is_moved) {
     }
+
+    bool operator==(const Figure &rhs) const {
+        return _type == rhs._type && _color == rhs._color && _coords == rhs._coords;
+    }
 };
-
-inline bool operator==(const Figure &lhs, const Figure &rhs) {
-    return lhs._type == rhs._type && lhs._color == rhs._color && lhs._coords == rhs._coords;
-}
-
-inline bool operator!=(const Figure &lhs, const Figure &rhs) {
-    return lhs._type != rhs._type && lhs._color != rhs._color && lhs._coords != rhs._coords;
-}

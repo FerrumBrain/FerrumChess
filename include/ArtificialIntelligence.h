@@ -2,21 +2,19 @@
 
 #include "Intelligence.h"
 #include <random>
-#include <ctime>
+#include <chrono>
 
 class ArtificialIntelligence : public Intelligence {
 public:
-    std::mt19937 gen;
     ArtificialIntelligence(Color color, Cell king_position) : Intelligence(color, king_position) {
-        long long seed = time(nullptr);
-        gen.seed(seed);
+        gen.seed(std::chrono::high_resolution_clock::now().time_since_epoch().count());
     }
-
-    void make_move(Board &board, History &history, int &last_move_for_50move) override;
+    Move make_move(Board &board, Move last_move, int &last_move_for_50move) override;
 
 private:
-    void undo_move(Board &board, History &history, const Figure &old_figure);
+    std::mt19937_64 gen;
+    std::vector<Cell> figures_coords;
+    void undo_move(Board &board, Move last_move, const Figure &old_figure);
     double evaluate(Board &board);
-    std::vector<Figure> figures;
-    Move search(Board &board, History &history);
+    Move search(Board &board, Move last_move);
 };

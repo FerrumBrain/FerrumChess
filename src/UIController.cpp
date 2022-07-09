@@ -4,7 +4,8 @@ Mode UIController::start_game() {
     std::cout
             << R"(If you want to play new game, type "N". If you want to play from your own position, type "P")"
             << std::endl;
-    std::string input, raw_input;
+    std::string input;
+    std::string raw_input;
     while (true) {
         input = "";
         getline(std::cin, raw_input);
@@ -23,7 +24,8 @@ Mode UIController::start_game() {
 
 Color UIController::choose_color() {
     std::cout << R"(If you want to play with white pieces, type "W". Else type "B")" << std::endl;
-    std::string input, raw_input;
+    std::string input;
+    std::string raw_input;
     while (true) {
         input = "";
         getline(std::cin, raw_input);
@@ -66,50 +68,46 @@ void UIController::show_board(const Board &board, Color color) {
     std::cout << std::endl;
 }
 
+Cell get_cell() {
+    bool flag = false;
+    std::string str;
+    std::string str_raw;
+    int i = 0;
+    while (!flag) {
+        str = "";
+        if (i != 0) std::cout << "Wrong format, try again" << std::endl;
+        i++;
+        getline(std::cin, str_raw);
+        for (char j : str_raw) {
+            if (j != ' ') str += j;
+        }
+        if (str.size() == 2 && str[0] >= 'a' && str[0] <= 'h' && str[1] >= '1' && str[1] <= '8')
+            flag = true;
+    }
+
+    std::cout << std::endl;
+
+    return {str[0] - 'a', str[1] - '1'};
+}
+
 Move UIController::get_users_move() {
     Move ans;
-    bool flag = false;
-    std::string str, str_raw;
-    int i = 0;
+    std::string str;
+    std::string str_raw;
+
     std::cout << "From-square:" << std::endl;
-    while (!flag) {
-        str = "";
-        if (i != 0) std::cout << "Wrong format, try again" << std::endl;
-        i++;
-        getline(std::cin, str_raw);
-        for (char j : str_raw) {
-            if (j != ' ') str += j;
-        }
-        if (str.size() != 2) continue;
-        if (str[0] >= 'a' && str[0] <= 'h')
-            if (str[1] >= '1' && str[1] <= '8')
-                flag = true;
-    }
-    std::cout << std::endl;
-    ans.from = {(int) (str[0] - 'a'), (int) (str[1] - '1')};
-    flag = false, i = 0;
+    ans.from = get_cell();
+
     std::cout << "To-square:" << std::endl;
-    while (!flag) {
-        str = "";
-        if (i != 0) std::cout << "Wrong format, try again" << std::endl;
-        i++;
-        getline(std::cin, str_raw);
-        for (char j : str_raw) {
-            if (j != ' ') str += j;
-        }
-        if (str.size() != 2) continue;
-        if (str[0] >= 'a' && str[0] <= 'h')
-            if (str[1] >= '1' && str[1] <= '8')
-                flag = true;
-    }
-    std::cout << std::endl;
-    ans.to = {(int) (str[0] - 'a'), (int) (str[1] - '1')};
+    ans.to = get_cell();
+
     return ans;
 }
 
-Type promote_to() {
+Type UIController::promote_to() {
     bool flag = false;
-    std::string str, str_raw;
+    std::string str;
+    std::string str_raw;
     int i = 0;
     std::cout << "Promote to:" << std::endl;
     while (!flag) {
@@ -122,7 +120,7 @@ Type promote_to() {
         }
         if (str.size() != 1) continue;
         flag = str[0] == 'N' || str[0] == 'B' || str[0] == 'R' || str[0] == 'Q' ||
-                str[0] == 'n' || str[0] == 'b' || str[0] == 'r' || str[0] == 'q';
+               str[0] == 'n' || str[0] == 'b' || str[0] == 'r' || str[0] == 'q';
     }
     std::cout << std::endl;
 
@@ -138,11 +136,11 @@ void UIController::impossible_move() {
     std::cout << "Impossible move, try again" << std::endl;
 }
 
-void UIController::finish_game(const Board &board, Color color, Result result) {
-    UIController::show_board(board, color);
+void UIController::finish_game(const Board &board, Color player, Result result, Color winner) {
+    UIController::show_board(board, player);
     switch (result) {
         case Result::CHECKMATE_WIN:
-            std::cout << "Mate. " << to_string(color) << " won!" << std::endl;
+            std::cout << "Mate. " << to_string(winner) << " won!" << std::endl;
             break;
         case Result::STALEMATE_DRAW:
             std::cout << "Stalemate. Draw!" << std::endl;
@@ -150,5 +148,7 @@ void UIController::finish_game(const Board &board, Color color, Result result) {
         case Result::FIFTY_MOVE_DRAW:
             std::cout << "50-move rule. Draw!" << std::endl;
             break;
+        default:
+            assert("Unknown result");
     }
 }

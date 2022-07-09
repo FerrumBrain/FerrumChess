@@ -8,13 +8,13 @@ public:
 private:
     Board board;
     History history;
-    UserIntelligence ui;
-    ArtificialIntelligence ai;
+    UserIntelligence ui{Color::EMPTY, {-1, -1}};
+    ArtificialIntelligence ai{Color::EMPTY, {-1, -1}};
     Color user_color;
     bool is_white_first_to_move;
-    bool is_mate(const Intelligence &intelligence);
-    bool is_stalemate(const Intelligence &intelligence);
-    bool is_finished(const Intelligence &intelligence);
+    [[nodiscard]] bool is_mate(const Intelligence &intelligence) const;
+    [[nodiscard]] bool is_stalemate(const Intelligence &intelligence) const;
+    [[nodiscard]] bool is_finished(const Intelligence &intelligence) const;
     std::pair<Cell, Cell> handle_from_position();
     int last_move_for_50move = 0;
 };

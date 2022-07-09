@@ -1,25 +1,29 @@
 #pragma once
 
 #include <vector>
+#include <algorithm>
 #include "../constants.h"
 
 using Board = std::vector<std::vector<Figure>>;
 using History = std::vector<Move>;
 
+bool is_correct_cell(Cell cell);
+
 class FigureController {
 public:
-    virtual std::vector<Cell> get_moves(Cell coords, const Board &board, History &history,
+    virtual std::vector<Cell> get_moves(Cell coords, const Board &board, Move last_move,
                                         const Cell &king_position) = 0;
 
-    virtual void make_move(const Move &move, Board &board, History &history,
+    void make_move(Move move, Board &board, Move last_move,
                            Type promote_to);
 
-    virtual bool is_correct_move(Move move_to_check, const Board &board,
-                                 History &history, const Cell &king_position) {
-        std::vector<Cell> possible_moves = get_moves(move_to_check.from, board, history, king_position);
-        for (auto move : possible_moves) {
-            if (move == move_to_check.to) return true;
-        }
-        return false;
+    bool is_correct_move(Move move_to_check, const Board &board,
+                                 Move last_move, const Cell &king_position) {
+        std::vector<Cell> possible_moves = get_moves(move_to_check.from, board, last_move, king_position);
+        return std::ranges::any_of(possible_moves.begin(),  possible_moves.end(), [&](Cell a){
+            return (a == move_to_check.to);
+        });
     }
+
+    virtual ~FigureController() = default;
 };
