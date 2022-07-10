@@ -65,7 +65,7 @@ bool KingController::is_attacked(Cell coords, Color color, const Board &board) {
     return false;
 }
 
-std::vector<Cell> KingController::get_moves(Cell coords, const Board &board, Move last_move,
+std::vector<Cell> KingController::get_moves(Cell coords, Board board, Move last_move,
                                             const Cell &king_position) {
     int x = coords.x;
     int y = coords.y;
@@ -76,12 +76,19 @@ std::vector<Cell> KingController::get_moves(Cell coords, const Board &board, Mov
     Color opponent_color = (color == Color::BLACK) ? Color::WHITE : Color::BLACK;
     std::vector<Cell> all_possible_moves;
     std::vector<Cell> correct_possible_moves;
-    for (int dx = -1; dx <= 1; dx++) {
-        for (int dy = -1; dy <= 1; dy++) {
-            if (dx == 0 && dy == 0 || !is_correct_cell({x + dx, y + dy})) continue;
+    for (auto[dx, dy] : std::vector<Cell>{
+            {-1, -1},
+            {-1, 0},
+            {-1, 1},
+            {0,  -1},
+            {0,  1},
+            {1,  -1},
+            {1,  0},
+            {1,  1}
+    }) {
+        if (!is_correct_cell({x + dx, y + dy})) continue;
 
-            if (board[y + dy][x + dx]._color != color) all_possible_moves.emplace_back(x + dx, y + dy);
-        }
+        if (board[y + dy][x + dx]._color != color) all_possible_moves.emplace_back(x + dx, y + dy);
     }
 
     if (!board[y][x]._is_moved && !is_attacked(king_position, opponent_color, board)) {
@@ -95,10 +102,16 @@ std::vector<Cell> KingController::get_moves(Cell coords, const Board &board, Mov
     }
 
     for (auto to : all_possible_moves) {
-        Board board_copy = board;
-        make_move({coords, to}, board_copy, last_move, Type::EMPTY);
-        if (!is_attacked(to, opponent_color, board_copy))
+        if (abs(to.x - coords.x) == 2) continue;
+
+        Figure from_figure = board[coords.y][coords.x];
+        Figure to_figure = board[to.y][to.x];
+        make_move({coords, to}, board, last_move, Type::EMPTY);
+        if (!is_attacked(to, opponent_color, board)) {
             correct_possible_moves.emplace_back(to);
+        }
+        board[coords.y][coords.x] = from_figure;
+        board[to.y][to.x] = to_figure;
     }
 
     return correct_possible_moves;
