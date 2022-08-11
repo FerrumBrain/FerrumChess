@@ -3,6 +3,10 @@
 #include <cassert>
 #include <chrono>
 
+int GameController::last_move_for_50move = 0;
+Board GameController::board = {};
+History GameController::history = {};
+
 static std::pair<Type, Color> char_to_type_and_color(char c) {
     std::pair<Type, Color> ans = {Type::EMPTY, isupper(c) == 0 ? Color::BLACK : Color::WHITE};
     c = static_cast<char>(tolower(c));
@@ -152,18 +156,18 @@ GameController::GameController() {
     }
 }
 
-std::vector<Move> get_possible_moves(const Intelligence &intelligence, const Board &board, const History &history) {
+std::vector<Move> get_possible_moves(Color color, Cell king_position, const Board &board, const History &history) {
     std::vector<Move> possible_moves;
     std::vector<Cell> current_moves;
     int i = 0;
     int j = 0;
-    while (i < 8 || j < 8) {
-        if (board[i][j]._color == intelligence._color) {
-            current_moves = intelligence.controller_container.at(board[i][j]._type)->get_moves({j, i}, board,
-                                                                                               history.empty()
-                                                                                               ? Move()
-                                                                                               : history.back(),
-                                                                                               intelligence._king_position);
+    while (i < 8) {
+        if (board[i][j]._color == color) {
+            current_moves = Intelligence::controller_container.at(board[i][j]._type)->get_moves({j, i}, board,
+                                                                                                history.empty()
+                                                                                                ? Move()
+                                                                                                : history.back(),
+                                                                                                king_position);
             for (auto to : current_moves) {
                 possible_moves.push_back({{j, i}, to});
             }
@@ -178,31 +182,35 @@ std::vector<Move> get_possible_moves(const Intelligence &intelligence, const Boa
     return possible_moves;
 }
 
-bool GameController::is_mate(const Intelligence &intelligence) const {
-    auto possible_moves = get_possible_moves(intelligence, board, history);
-    Color opposite_color = (intelligence._color == Color::WHITE) ? Color::BLACK : Color::WHITE;
-    return possible_moves.empty() && KingController::is_attacked(intelligence._king_position, opposite_color, board);
+bool GameController::is_mate(Color color, Cell king_position) {
+    auto possible_moves = get_possible_moves(color, king_position, board, history);
+    Color opposite_color = (color == Color::WHITE) ? Color::BLACK : Color::WHITE;
+    return possible_moves.empty() && KingController::is_attacked(king_position, opposite_color, board);
 }
 
 
-bool GameController::is_stalemate(const Intelligence &intelligence) const {
-    auto possible_moves = get_possible_moves(intelligence, board, history);
-    Color opposite_color = (intelligence._color == Color::WHITE) ? Color::BLACK : Color::WHITE;
-    return possible_moves.empty() && !KingController::is_attacked(intelligence._king_position, opposite_color, board);
+bool GameController::is_stalemate(Color color, Cell king_position) {
+    auto possible_moves = get_possible_moves(color, king_position, board, history);
+    Color opposite_color = (color == Color::WHITE) ? Color::BLACK : Color::WHITE;
+    return possible_moves.empty() && !KingController::is_attacked(king_position, opposite_color, board);
+}
+
+bool GameController::is_50_move() {
+    return history.size() - last_move_for_50move == 100;
 }
 
 bool GameController::is_finished(const Intelligence &intelligence) const {
-    if (is_mate(intelligence)) {
-        UIController::finish_game(board, user_color, Result::CHECKMATE_WIN, intelligence._color);
+    if (is_mate(intelligence._color, intelligence._king_position)) {
+        UIController::finish_game(board, user_color, Result::CHECKMATE_WIN, opposite(intelligence._color));
         return true;
     }
 
-    if (is_stalemate(intelligence)) {
+    if (is_stalemate(intelligence._color, intelligence._king_position)) {
         UIController::finish_game(board, user_color, Result::STALEMATE_DRAW);
         return true;
     }
 
-    if (history.size() - last_move_for_50move == 100) {
+    if (is_50_move()) {
         UIController::finish_game(board, user_color, Result::FIFTY_MOVE_DRAW);
         return true;
     }
@@ -219,15 +227,18 @@ void GameController::play_game() {
 
     int i = 0;
     while (true) {
-        if (players[i] == &ui)
+        if (players[i] == &ui) {
             UIController::show_board(board, user_color);
-
+        }
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         history.emplace_back(
-                players[i]->make_move(board, history.empty() ? Move() : history.back(), last_move_for_50move));
+                players[i]->make_move(board, history.empty() ? Move() : history.back()));
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count()
                   << "[ns]" << std::endl;
+        std::cout << "Last move was: " << (char) (history.back().from.x + 'a') << history.back().from.y + 1
+                  << " -> " << (char) (history.back().to.x + 'a') << history.back().to.y + 1 << std::endl;
+
 
         if (board[history.back().from.y][history.back().from.x]._type == Type::PAWN ||
             board[history.back().to.y][history.back().to.x]._type != Type::EMPTY) {

@@ -1,7 +1,7 @@
 #include "../../include/controllers/RookController.h"
 #include "../../include/controllers/KingController.h"
 
-std::vector<Cell> RookController::get_moves(Cell coords, Board &board, Move last_move,
+std::vector<Cell> RookController::get_moves(Cell coords, Board board, Move last_move,
                                             const Cell &king_position) {
     int x = coords.x;
     int y = coords.y;
@@ -26,7 +26,7 @@ std::vector<Cell> RookController::get_moves(Cell coords, Board &board, Move last
                 all_possible_moves.emplace_back(x + dx * delta, y + dy * delta);
             }
 
-            closed[i] = is_correct_cell({x + dx * delta, y + dy * delta}) && !closed[i] && board[y][x + delta] != NONE;
+            closed[i] = !is_correct_cell({x + dx * delta, y + dy * delta}) || closed[i] || board[y + delta * dy][x + delta * dx] != NONE;
             i++;
         }
     }

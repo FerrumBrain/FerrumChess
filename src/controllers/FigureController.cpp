@@ -11,7 +11,7 @@ void FigureController::make_move(Move move, Board &board, Move last_move,
     int step = (board[from.y][from.x]._color == Color::WHITE) ? 1 : -1;
 
 
-    if (board[from.y][from.x]._type == Type::PAWN && to.y == 7) {
+    if (board[from.y][from.x]._type == Type::PAWN && to.y % 7 == 0) {
         board[from.y][from.x]._type = promote_to;
     }
 

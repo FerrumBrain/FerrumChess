@@ -1,7 +1,7 @@
 #include "../include/UserIntelligence.h"
 #include "../include/UIController.h"
 
-Move UserIntelligence::make_move(Board &board, Move last_move, int &last_move_for_50move) {
+Move UserIntelligence::make_move(Board &board, Move last_move) {
     while (true) {
         auto[from, to] = UIController::get_users_move();
         if (board[from.y][from.x]._type != Type::EMPTY &&

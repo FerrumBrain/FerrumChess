@@ -44,7 +44,7 @@ Color UIController::choose_color() {
 
 FEN UIController::get_fen() {
     FEN fen;
-    std::cout << "Paste FEN of your position (without last field):\n";
+    std::cout << "Paste FEN of your position:\n";
     std::cin >> fen.position >> fen.move >> fen.castles >> fen.en_passant_square >> fen.last_move;
     return fen;
 }

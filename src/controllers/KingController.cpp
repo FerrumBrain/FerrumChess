@@ -58,7 +58,7 @@ bool KingController::is_attacked(Cell coords, Color color, const Board &board) {
                 return true;
             }
 
-            closed[i] = is_correct_cell({x + dx * delta, y + dy * delta}) && !closed[i] && board[y][x + delta] != NONE;
+            closed[i] = !is_correct_cell({x + dx * delta, y + dy * delta}) || closed[i] || board[y + delta * dy][x + delta * dx] != NONE;
             i++;
         }
     }

@@ -4,6 +4,10 @@ enum class Color : int {
     BLACK
 };
 
+inline Color opposite(Color color) {
+    return color == Color::WHITE ? Color::BLACK : Color::WHITE;
+}
+
 inline std::ostream &operator<<(std::ostream &os, const Color &c) {
     switch (c) {
         case Color::EMPTY:

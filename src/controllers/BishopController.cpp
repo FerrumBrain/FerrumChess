@@ -26,7 +26,7 @@ std::vector<Cell> BishopController::get_moves(Cell coords, Board board, Move las
                 all_possible_moves.emplace_back(x + dx * delta, y + dy * delta);
             }
 
-            closed[i] = is_correct_cell({x + dx * delta, y + dy * delta}) && !closed[i] && board[y][x + delta] != NONE;
+            closed[i] = !is_correct_cell({x + dx * delta, y + dy * delta}) || closed[i] || board[y + delta * dy][x + delta * dx] != NONE;
             i++;
         }
     }

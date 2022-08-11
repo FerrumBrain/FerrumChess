@@ -11,9 +11,9 @@
 
 class Intelligence {
 public:
-    virtual Move make_move(Board &board, Move last_move, int &last_move_for_50move) = 0;
+    virtual Move make_move(Board &board, Move last_move) = 0;
 
-    std::map<Type, std::shared_ptr<FigureController>> controller_container;
+    static std::map<Type, std::shared_ptr<FigureController>> controller_container;
     Cell _king_position;
     Color _color;
 
@@ -27,4 +27,13 @@ public:
     };
 
     virtual ~Intelligence() = default;
+};
+
+inline std::map<Type, std::shared_ptr<FigureController>> Intelligence::controller_container = {
+        {Type::PAWN, std::make_shared<PawnController>()},
+        {Type::KNIGHT, std::make_shared<KnightController>()},
+        {Type::BISHOP, std::make_shared<BishopController>()},
+        {Type::ROOK, std::make_shared<RookController>()},
+        {Type::QUEEN, std::make_shared<QueenController>()},
+        {Type::KING, std::make_shared<KingController>()}
 };
