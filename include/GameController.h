@@ -10,6 +10,7 @@ public:
     [[nodiscard]] static bool is_mate(Color color, Cell king_position);
     [[nodiscard]] static bool is_stalemate(Color color, Cell king_position);
     [[nodiscard]] static bool is_50_move();
+    [[nodiscard]] static bool is_draw();
 private:
     static Board board;
     static History history;

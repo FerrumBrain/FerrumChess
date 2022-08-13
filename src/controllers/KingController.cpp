@@ -102,7 +102,10 @@ std::vector<Cell> KingController::get_moves(Cell coords, Board board, Move last_
     }
 
     for (auto to : all_possible_moves) {
-        if (abs(to.x - coords.x) == 2) continue;
+        if (abs(to.x - coords.x) == 2) {
+            correct_possible_moves.emplace_back(to);
+            continue;
+        }
 
         Figure from_figure = board[coords.y][coords.x];
         Figure to_figure = board[to.y][to.x];

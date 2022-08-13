@@ -148,6 +148,9 @@ void UIController::finish_game(const Board &board, Color player, Result result, 
         case Result::FIFTY_MOVE_DRAW:
             std::cout << "50-move rule. Draw!" << std::endl;
             break;
+        case Result::POSITION_DRAW:
+            std::cout << "Insufficient material. Draw!" << std::endl;
+            break;
         default:
             assert("Unknown result");
     }

@@ -199,6 +199,32 @@ bool GameController::is_50_move() {
     return history.size() - last_move_for_50move == 100;
 }
 
+bool GameController::is_draw() {
+    std::vector<Type> white;
+    std::vector<Type> black;
+    int i = 0;
+    int j = 0;
+    while (i < 8) {
+        if (board[i][j] != NONE && board[i][j]._type != Type::KING) {
+            if (board[i][j]._color == Color::WHITE)
+                white.emplace_back(board[i][j]._type);
+            else
+                black.emplace_back(board[i][j]._type);
+        }
+        j++;
+        if (j == 8) {
+            j = 0;
+            i++;
+        }
+    }
+
+    return (white.empty() && black.empty()) ||
+           (white.empty() && black.size() == 1 && (black[0] == Type::BISHOP || black[0] == Type::KNIGHT)) ||
+           (black.empty() && white.size() == 1 && (white[0] == Type::BISHOP || white[0] == Type::KNIGHT)) ||
+           (black.size() == 1 && (black[0] == Type::BISHOP || black[0] == Type::KNIGHT) && white.size() == 1 &&
+            (white[0] == Type::BISHOP || white[0] == Type::KNIGHT));
+}
+
 bool GameController::is_finished(const Intelligence &intelligence) const {
     if (is_mate(intelligence._color, intelligence._king_position)) {
         UIController::finish_game(board, user_color, Result::CHECKMATE_WIN, opposite(intelligence._color));
@@ -212,6 +238,11 @@ bool GameController::is_finished(const Intelligence &intelligence) const {
 
     if (is_50_move()) {
         UIController::finish_game(board, user_color, Result::FIFTY_MOVE_DRAW);
+        return true;
+    }
+
+    if (is_draw()) {
+        UIController::finish_game(board, user_color, Result::POSITION_DRAW);
         return true;
     }
     return false;

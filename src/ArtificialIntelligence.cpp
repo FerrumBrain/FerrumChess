@@ -44,6 +44,7 @@ ArtificialIntelligence::try_move(int i, std::pair<Cell, Move> to_and_last_move, 
 }
 
 Move ArtificialIntelligence::make_move(Board &board, Move last_move) {
+    Board board_copy = board;
     figures = get_figures_coords(board, _color);
 
     std::vector<Cell> current_moves;
@@ -57,12 +58,12 @@ Move ArtificialIntelligence::make_move(Board &board, Move last_move) {
                                                                           _king_position);
         for (auto to : current_moves) {
             if (figures[i]._type == Type::PAWN && to.y == (_color == Color::WHITE ? 7 : 0)) {
-                try_move(i, {to, last_move}, board, best_eval, ans, promote_to, Type::QUEEN);
-                try_move(i, {to, last_move}, board, best_eval, ans, promote_to, Type::ROOK);
-                try_move(i, {to, last_move}, board, best_eval, ans, promote_to, Type::KNIGHT);
-                try_move(i, {to, last_move}, board, best_eval, ans, promote_to, Type::BISHOP);
+                try_move(i, {to, last_move}, board_copy, best_eval, ans, promote_to, Type::QUEEN);
+                try_move(i, {to, last_move}, board_copy, best_eval, ans, promote_to, Type::ROOK);
+                try_move(i, {to, last_move}, board_copy, best_eval, ans, promote_to, Type::KNIGHT);
+                try_move(i, {to, last_move}, board_copy, best_eval, ans, promote_to, Type::BISHOP);
             } else {
-                try_move(i, {to, last_move}, board, best_eval, ans, promote_to);
+                try_move(i, {to, last_move}, board_copy, best_eval, ans, promote_to);
             }
         }
     }
@@ -76,9 +77,14 @@ Move ArtificialIntelligence::make_move(Board &board, Move last_move) {
     return ans;
 }
 
+static bool is_insufficient(const std::vector<Figure> &figures) {
+    return figures.size() == 1 || (figures.size() == 2 &&
+                                   (figures[0]._type == Type::KNIGHT || figures[0]._type == Type::BISHOP ||
+                                    figures[1]._type == Type::KNIGHT || figures[1]._type == Type::BISHOP));
+}
 
 double ArtificialIntelligence::evaluate(const Board &board, Move last_move, Color move) const {
-    auto opponent_figures = get_figures_coords(board, (_color == Color::WHITE) ? Color::BLACK : Color::WHITE);
+    auto opponent_figures = get_figures_coords(board, opposite(_color));
     Cell opponent_king_position;
     for (const auto &figure: opponent_figures) {
         if (figure._type == Type::KING) opponent_king_position = figure._coords;
@@ -100,6 +106,8 @@ double ArtificialIntelligence::evaluate(const Board &board, Move last_move, Colo
         } else {
             eval = 0;
         }
+    } else if (is_insufficient(figures) && is_insufficient(opponent_figures)) {
+        eval = 0;
     } else {
         eval = (200 * (features.kings - opponent_features.kings) +
                 9 * (features.queens - opponent_features.queens) +
