@@ -33,10 +33,7 @@ private:
 
     static void undo_move(Board &board, Move last_move, const Figure &old_figure_from, const Figure &old_figure_to);
 
-    double search(Board &board, Move last_move, int depth);
-
-    void try_move(std::pair<int, int> index, std::pair<Cell, Move> to_and_last_move, Board &board, double &best_eval,
-                  Move &ans, std::pair<Type&, Type> promote_to_ref_and_promote_to, int depth);
+    std::pair<double, std::pair<Move, Type>> search(Board &board, Move last_move, int depth);
 
     static Features
     get_features(const std::vector<Figure> &cur_figures, const Board &board, Move last_move, Cell king_position);
