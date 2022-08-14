@@ -1,4 +1,7 @@
 #include "Figure.h"
 
+// Big Bad "Static storage duration"...
+// NOLINTNEXTLINE
 const Figure NONE = Figure(Type::EMPTY, Color::EMPTY, -1, -1, true);
-const int INF = 2'000'000'000;
+const double INF = 1'000'000'000;
+const int DEPTH = 3;

@@ -16,7 +16,8 @@ public:
 
 private:
     std::mt19937_64 gen;
-    std::vector<Figure> figures;
+    std::vector<std::vector<Figure>> figures;
+    Cell _opponent_king_position;
 
     struct Features {
         int kings = 0;
@@ -32,10 +33,10 @@ private:
 
     static void undo_move(Board &board, Move last_move, const Figure &old_figure_from, const Figure &old_figure_to);
 
-    Move search(Board &board, Move last_move);
+    double search(Board &board, Move last_move, int depth);
 
-    void try_move(int i, std::pair<Cell, Move> to_and_last_move, Board &board, double &best_eval, Move &ans,
-                  Type &promote_to_ref, Type promote_to = Type::EMPTY);
+    void try_move(std::pair<int, int> index, std::pair<Cell, Move> to_and_last_move, Board &board, double &best_eval,
+                  Move &ans, std::pair<Type&, Type> promote_to_ref_and_promote_to, int depth);
 
     static Features
     get_features(const std::vector<Figure> &cur_figures, const Board &board, Move last_move, Cell king_position);

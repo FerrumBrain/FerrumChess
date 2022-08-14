@@ -1,11 +1,13 @@
 #include "../include/ArtificialIntelligence.h"
 
-std::vector<Figure> get_figures_coords(const Board &board, Color color) {
-    std::vector<Figure> coords;
+std::vector<std::vector<Figure>> get_figures_coords(const Board &board, Color color) {
+    std::vector<std::vector<Figure>> coords(2);
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             if (board[i][j]._color == color) {
-                coords.emplace_back(board[i][j]);
+                coords[0].emplace_back(board[i][j]);
+            } else if (board[i][j]._color == opposite(color)) {
+                coords[1].emplace_back(board[i][j]);
             }
         }
     }
@@ -14,62 +16,95 @@ std::vector<Figure> get_figures_coords(const Board &board, Color color) {
 }
 
 static bool is_better(double eval1, double eval2) {
-    return eval1 < eval2;
+    return eval1 > eval2;
 }
 
 void
-ArtificialIntelligence::try_move(int i, std::pair<Cell, Move> to_and_last_move, Board &board, double &best_eval,
-                                 Move &ans, Type &promote_to_ref, Type promote_to) {
-
+ArtificialIntelligence::try_move(std::pair<int, int> index, std::pair<Cell, Move> to_and_last_move, Board &board,
+                                 double &best_eval, Move &ans, std::pair<Type &, Type> promote_to_ref_and_promote_to,
+                                 int depth) {
+    auto &[promote_to_ref, promote_to] = promote_to_ref_and_promote_to;
     auto const&[to, last_move] = to_and_last_move;
-    Cell old_coords = figures[i]._coords;
+    Cell old_coords = figures[index.first][index.second]._coords;
+    auto old_figure_from = figures[index.first][index.second];
     Figure old_figure_to = board[to.y][to.x];
-    controller_container[figures[i]._type]->make_move({figures[i]._coords, to}, board, last_move, promote_to);
-    if (figures[i]._type == Type::KING) {
-        _king_position = to;
+    assert(figures[index.first][index.second]._type != Type::EMPTY);
+    controller_container[figures[index.first][index.second]._type]->make_move(
+            {figures[index.first][index.second]._coords, to}, board, last_move, promote_to);
+    if (figures[index.first][index.second]._type == Type::KING) {
+        if (index.first == 0) {
+            _king_position = to;
+        } else {
+            _opponent_king_position = to;
+        }
     }
-    figures[i]._coords = to;
-    if (double cur_eval = evaluate(board, {old_coords, to}, opposite(_color));
+    figures[index.first][index.second] = board[to.y][to.x];
+    int index_in_figures = -1;
+    if (old_figure_to != NONE) {
+        for (int i = 0; i < figures[1 - index.first].size(); i++) {
+            if (figures[1 - index.first][i]._coords == to) {
+                figures[1 - index.first].erase(figures[1 - index.first].begin() + i);
+                index_in_figures = i;
+                break;
+            }
+        }
+    }
+    if (double cur_eval = -search(board, {old_coords, to}, depth);
             best_eval == std::numeric_limits<double>::infinity() ||
             is_better(cur_eval, best_eval)) {
         best_eval = cur_eval;
         ans = {old_coords, to};
         promote_to_ref = promote_to;
     }
-    undo_move(board, {old_coords, to}, figures[i], old_figure_to);
-    figures[i]._coords = old_coords;
-    if (figures[i]._type == Type::KING) {
-        _king_position = old_coords;
+    undo_move(board, {old_coords, to}, old_figure_from, old_figure_to);
+    figures[index.first][index.second] = old_figure_from;
+    if (old_figure_to != NONE) {
+        figures[1 - index.first].insert(figures[1 - index.first].begin() + index_in_figures, old_figure_to);
+    }
+    if (figures[index.first][index.second]._type == Type::KING) {
+        if (index.first == 0) {
+            _king_position = old_coords;
+        } else {
+            _opponent_king_position = old_coords;
+        }
     }
 }
 
 Move ArtificialIntelligence::make_move(Board &board, Move last_move) {
     Board board_copy = board;
     figures = get_figures_coords(board, _color);
+    for (const auto &figure : figures[1]) {
+        if (figure._type == Type::KING) {
+            _opponent_king_position = figure._coords;
+            break;
+        }
+    }
 
     std::vector<Cell> current_moves;
-
     Move ans;
     Type promote_to = Type::EMPTY;
     double best_eval = std::numeric_limits<double>::infinity();
 
-    for (int i = 0; i < figures.size(); i++) {
-        current_moves = controller_container[figures[i]._type]->get_moves(figures[i]._coords, board, last_move,
-                                                                          _king_position);
+    for (int i = 0; i < figures[0].size(); i++) {
+        assert(figures[0][i]._type != Type::EMPTY);
+        current_moves = controller_container[figures[0][i]._type]->get_moves(figures[0][i]._coords, board, last_move,
+                                                                             _king_position);
+        assert(board_copy == board);
         for (auto to : current_moves) {
-            if (figures[i]._type == Type::PAWN && to.y == (_color == Color::WHITE ? 7 : 0)) {
-                try_move(i, {to, last_move}, board_copy, best_eval, ans, promote_to, Type::QUEEN);
-                try_move(i, {to, last_move}, board_copy, best_eval, ans, promote_to, Type::ROOK);
-                try_move(i, {to, last_move}, board_copy, best_eval, ans, promote_to, Type::KNIGHT);
-                try_move(i, {to, last_move}, board_copy, best_eval, ans, promote_to, Type::BISHOP);
+            if (figures[0][i]._type == Type::PAWN && to.y == (_color == Color::WHITE ? 7 : 0)) {
+                try_move({0, i}, {to, last_move}, board_copy, best_eval, ans, {promote_to, Type::QUEEN}, DEPTH - 1);
+                try_move({0, i}, {to, last_move}, board_copy, best_eval, ans, {promote_to, Type::ROOK}, DEPTH - 1);
+                try_move({0, i}, {to, last_move}, board_copy, best_eval, ans, {promote_to, Type::KNIGHT}, DEPTH - 1);
+                try_move({0, i}, {to, last_move}, board_copy, best_eval, ans, {promote_to, Type::BISHOP}, DEPTH - 1);
             } else {
-                try_move(i, {to, last_move}, board_copy, best_eval, ans, promote_to);
+                try_move({0, i}, {to, last_move}, board_copy, best_eval, ans, {promote_to, Type::EMPTY}, DEPTH - 1);
             }
         }
     }
 
     auto[from, to] = ans;
     Type type = board[from.y][from.x]._type;
+    assert(type != Type::EMPTY);
     controller_container[type]->make_move(ans, board, last_move, promote_to);
     if (board[to.y][to.x]._type == Type::KING)
         _king_position = to;
@@ -84,29 +119,23 @@ static bool is_insufficient(const std::vector<Figure> &figures) {
 }
 
 double ArtificialIntelligence::evaluate(const Board &board, Move last_move, Color move) const {
-    auto opponent_figures = get_figures_coords(board, opposite(_color));
-    Cell opponent_king_position;
-    for (const auto &figure: opponent_figures) {
-        if (figure._type == Type::KING) opponent_king_position = figure._coords;
-    }
-
-    Features features = get_features(figures, board, last_move, _king_position);
-    Features opponent_features = get_features(opponent_figures, board, last_move, opponent_king_position);
+    Features features = get_features(figures[0], board, last_move, _king_position);
+    Features opponent_features = get_features(figures[1], board, last_move, _opponent_king_position);
 
     double eval;
     if (move == _color && features.mobility == 0) {
         if (KingController::is_attacked(_king_position, opposite(_color), board)) {
-            eval = (_color == Color::WHITE ? -1 : 1) * 1e9;
+            eval = (_color == Color::WHITE ? -1 : 1) * INF;
         } else {
             eval = 0;
         }
     } else if (move != _color && opponent_features.mobility == 0) {
-        if (KingController::is_attacked(opponent_king_position, _color, board)) {
-            eval = (_color == Color::WHITE ? 1 : -1) * 1e9;
+        if (KingController::is_attacked(_opponent_king_position, _color, board)) {
+            eval = (_color == Color::WHITE ? 1 : -1) * INF;
         } else {
             eval = 0;
         }
-    } else if (is_insufficient(figures) && is_insufficient(opponent_figures)) {
+    } else if (is_insufficient(figures[0]) && is_insufficient(figures[1])) {
         eval = 0;
     } else {
         eval = (200 * (features.kings - opponent_features.kings) +
@@ -164,4 +193,48 @@ ArtificialIntelligence::get_features(const std::vector<Figure> &cur_figures, con
     }
 
     return res;
+}
+
+double ArtificialIntelligence::search(Board &board, Move last_move, int depth) {
+    int player = (DEPTH - depth) % 2;
+    if (depth == 0) return evaluate(board, last_move, (player == 1 ? opposite(_color) : _color));
+
+    std::vector<std::pair<Move, int>> possible_moves;
+    std::vector<Cell> current_cells;
+    for (int i = 0; i < figures[player].size(); i++) {
+        assert(figures[player][i]._type != Type::EMPTY);
+        current_cells = controller_container[figures[player][i]._type]->get_moves(figures[player][i]._coords, board,
+                                                                                  last_move,
+                                                                                  player == 0 ? _king_position
+                                                                                              : _opponent_king_position);
+        for (auto to : current_cells) {
+            possible_moves.push_back({{figures[player][i]._coords, to}, i});
+        }
+    }
+
+    if (possible_moves.empty()) {
+        if (KingController::is_attacked(player == 1 ? _opponent_king_position : _king_position,
+                                        player == 1 ? _color : opposite(_color), board)) {
+            return -INF;
+        } else {
+            return 0;
+        }
+    }
+
+    Move ans;
+    Type promote_to = Type::EMPTY;
+    double best_eval = std::numeric_limits<double>::infinity();
+
+    for (auto[move, i] : possible_moves) {
+        if (figures[player][i]._type == Type::PAWN && move.to.y % 7 == 0) {
+            try_move({player, i}, {move.to, last_move}, board, best_eval, ans, {promote_to, Type::QUEEN}, depth - 1);
+            try_move({player, i}, {move.to, last_move}, board, best_eval, ans, {promote_to, Type::ROOK}, depth - 1);
+            try_move({player, i}, {move.to, last_move}, board, best_eval, ans, {promote_to, Type::BISHOP}, depth - 1);
+            try_move({player, i}, {move.to, last_move}, board, best_eval, ans, {promote_to, Type::KNIGHT}, depth - 1);
+        } else {
+            try_move({player, i}, {move.to, last_move}, board, best_eval, ans, {promote_to, Type::EMPTY}, depth - 1);
+        }
+    }
+
+    return best_eval;
 }
