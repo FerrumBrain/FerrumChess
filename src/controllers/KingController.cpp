@@ -65,7 +65,7 @@ bool KingController::is_attacked(Cell coords, Color color, const Board &board) {
     return false;
 }
 
-std::vector<Cell> KingController::get_moves(Cell coords, Board board, Move last_move,
+std::vector<Cell> KingController::get_moves(Cell coords, Board &board, Move last_move,
                                             const Cell &king_position) {
     int x = coords.x;
     int y = coords.y;

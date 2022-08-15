@@ -29,12 +29,17 @@ private:
         int mobility = 0;
     };
 
-    [[nodiscard]] double evaluate(const Board &board, Move last_move, Color move) const;
+    [[nodiscard]] double evaluate(Board &board, Move last_move, Color move) const;
 
-    static void undo_move(Board &board, Move last_move, const Figure &old_figure_from, const Figure &old_figure_to);
+    void undo_move(Board &board, Move last_move, const Figure &old_figure_from, const Figure &old_figure_to, int player,
+                   int i, int index_in_figures);
 
     std::pair<double, std::pair<Move, Type>> search(Board &board, Move last_move, int depth);
 
-    static Features
-    get_features(const std::vector<Figure> &cur_figures, const Board &board, Move last_move, Cell king_position);
+    Features get_features(int player, Board &board, Move last_move) const;
+
+    void set_king_position(int player, Cell new_king_position);
+
+    std::vector<std::pair<int, std::pair<Move, Type>>>
+    get_possible_moves(int player, Move last_move, Board &board) const;
 };

@@ -156,7 +156,7 @@ GameController::GameController() {
     }
 }
 
-std::vector<Move> get_possible_moves(Color color, Cell king_position, const Board &board, const History &history) {
+std::vector<Move> get_possible_moves(Color color, Cell king_position, Board &board, const History &history) {
     std::vector<Move> possible_moves;
     std::vector<Cell> current_moves;
     int i = 0;

@@ -1,7 +1,7 @@
 #include "../../include/controllers/QueenController.h"
 #include "../../include/controllers/KingController.h"
 
-std::vector<Cell> QueenController::get_moves(Cell coords, Board board, Move last_move,
+std::vector<Cell> QueenController::get_moves(Cell coords, Board &board, Move last_move,
                                              const Cell &king_position) {
     int x = coords.x;
     int y = coords.y;

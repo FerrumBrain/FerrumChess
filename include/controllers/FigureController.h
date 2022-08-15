@@ -11,13 +11,13 @@ bool is_correct_cell(Cell cell);
 
 class FigureController {
 public:
-    virtual std::vector<Cell> get_moves(Cell coords, Board board, Move last_move,
+    virtual std::vector<Cell> get_moves(Cell coords, Board &board, Move last_move,
                                         const Cell &king_position) = 0;
 
     void make_move(Move move, Board &board, Move last_move,
                    Type promote_to);
 
-    bool is_correct_move(Move move_to_check, const Board &board,
+    bool is_correct_move(Move move_to_check, Board &board,
                          Move last_move, const Cell &king_position) {
         std::vector<Cell> possible_moves = get_moves(move_to_check.from, board, last_move, king_position);
         return std::ranges::any_of(possible_moves.begin(), possible_moves.end(), [&](Cell a) {

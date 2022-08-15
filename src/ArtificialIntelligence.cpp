@@ -48,9 +48,9 @@ static bool is_insufficient(const std::vector<Figure> &figures) {
                                     figures[1]._type == Type::KNIGHT || figures[1]._type == Type::BISHOP));
 }
 
-double ArtificialIntelligence::evaluate(const Board &board, Move last_move, Color move) const {
-    Features features = get_features(figures[0], board, last_move, _king_position);
-    Features opponent_features = get_features(figures[1], board, last_move, _opponent_king_position);
+double ArtificialIntelligence::evaluate(Board &board, Move last_move, Color move) const {
+    Features features = get_features(0, board, last_move);
+    Features opponent_features = get_features(1, board, last_move);
 
     double eval;
     if (move == _color && features.mobility == 0) {
@@ -80,19 +80,25 @@ double ArtificialIntelligence::evaluate(const Board &board, Move last_move, Colo
 }
 
 void ArtificialIntelligence::undo_move(Board &board, Move last_move, const Figure &old_figure_from,
-                                       const Figure &old_figure_to) {
+                                       const Figure &old_figure_to, int player, int i, int index_in_figures) {
     board[last_move.from.y][last_move.from.x] = old_figure_from;
     board[last_move.to.y][last_move.to.x] = old_figure_to;
+    figures[player][i] = old_figure_from;
+    if (index_in_figures != -1) {
+        figures[1 - player].insert(figures[1 - player].begin() + index_in_figures, old_figure_to);
+    }
+    if (figures[player][i]._type == Type::KING) {
+        set_king_position(player, last_move.from);
+    }
 }
 
 //Well, SonarLint asks to mark this method as const, but it's static, so...
 //NOLINTNEXTLINE
 ArtificialIntelligence::Features
-ArtificialIntelligence::get_features(const std::vector<Figure> &cur_figures, const Board &board, Move last_move,
-                                     Cell king_position) {
+ArtificialIntelligence::get_features(int player, Board &board, Move last_move) const {
     Features res;
 
-    for (const auto &figure: cur_figures) {
+    for (const auto &figure: figures[player]) {
         switch (figure._type) {
             case Type::PAWN:
                 res.pawns++;
@@ -119,10 +125,16 @@ ArtificialIntelligence::get_features(const std::vector<Figure> &cur_figures, con
                 board[figure._coords.y][figure._coords.x]._type)->get_moves(figure._coords,
                                                                             board,
                                                                             last_move,
-                                                                            king_position).size());
+                                                                            player == 0 ? _king_position
+                                                                                        : _opponent_king_position).size());
     }
 
     return res;
+}
+
+void ArtificialIntelligence::set_king_position(int player, Cell new_king_position) {
+    if (player == 0) _king_position = new_king_position;
+    else _opponent_king_position = new_king_position;
 }
 
 std::pair<double, std::pair<Move, Type>> ArtificialIntelligence::search(Board &board, Move last_move, int depth) {
@@ -130,10 +142,63 @@ std::pair<double, std::pair<Move, Type>> ArtificialIntelligence::search(Board &b
     if (depth == 0)
         return {evaluate(board, last_move, (player == 1 ? opposite(_color) : _color)), {Move(), Type::EMPTY}};
 
+    std::vector<std::pair<int, std::pair<Move, Type>>> possible_moves = get_possible_moves(player, last_move, board);
+
+    if (possible_moves.empty()) {
+        if (KingController::is_attacked(player == 1 ? _opponent_king_position : _king_position,
+                                        player == 1 ? _color : opposite(_color), board)) {
+            return {(depth + 1) * -INF, {Move(), Type::EMPTY}};
+        }
+        return {0, {Move(), Type::EMPTY}};
+    }
+
+    Move ans;
+    Type promote_to = Type::EMPTY;
+    double best_eval = std::numeric_limits<double>::infinity();
+
+    for (auto const &[i, move_and_promote_to] : possible_moves) {
+        auto move = move_and_promote_to.first;
+        auto possible_promote_to = move_and_promote_to.second;
+        Cell old_coords = figures[player][i]._coords;
+        auto old_figure_from = figures[player][i];
+        Figure old_figure_to = board[move.to.y][move.to.x];
+
+        if (figures[player][i]._type == Type::KING) {
+            set_king_position(player, move.to);
+        }
+        int index_in_figures = -1;
+        if (old_figure_to != NONE) {
+            auto iter = std::ranges::find_if(figures[1 - player].begin(), figures[1 - player].end(),
+                                             [&](const Figure &figure) {
+                                                 return figure._coords == move.to;
+                                             });
+            figures[1 - player].erase(iter);
+            index_in_figures = static_cast<int>(iter - figures[1 - player].begin());
+        }
+        controller_container[figures[player][i]._type]->make_move(
+                {figures[player][i]._coords, move.to}, board, last_move, possible_promote_to);
+        figures[player][i] = board[move.to.y][move.to.x];
+        // -------------------------------------------------------------------------------------------------------------
+        if (double cur_eval = -search(board, {old_coords, move.to}, depth - 1).first;
+                best_eval == std::numeric_limits<double>::infinity() ||
+                is_better(cur_eval, best_eval)) {
+            best_eval = cur_eval;
+            ans = {old_coords, move.to};
+            promote_to = possible_promote_to;
+        }
+        // -------------------------------------------------------------------------------------------------------------
+        undo_move(board, {old_coords, move.to}, old_figure_from, old_figure_to, player, i, index_in_figures);
+    }
+
+    return {best_eval, {ans, promote_to}};
+}
+
+std::vector<std::pair<int, std::pair<Move, Type>>> ArtificialIntelligence::get_possible_moves(int player,
+                                                                                              Move last_move,
+                                                                                              Board &board) const {
     std::vector<std::pair<int, std::pair<Move, Type>>> possible_moves;
     std::vector<Cell> current_cells;
     for (int i = 0; i < figures[player].size(); i++) {
-        assert(figures[player][i]._type != Type::EMPTY);
         current_cells = controller_container[figures[player][i]._type]->get_moves(figures[player][i]._coords, board,
                                                                                   last_move,
                                                                                   player == 0 ? _king_position
@@ -149,65 +214,5 @@ std::pair<double, std::pair<Move, Type>> ArtificialIntelligence::search(Board &b
             }
         }
     }
-
-    if (possible_moves.empty()) {
-        if (KingController::is_attacked(player == 1 ? _opponent_king_position : _king_position,
-                                        player == 1 ? _color : opposite(_color), board)) {
-            return {-INF, {Move(), Type::EMPTY}};
-        } else {
-            return {0, {Move(), Type::EMPTY}};
-        }
-    }
-
-    Move ans;
-    Type promote_to = Type::EMPTY;
-    double best_eval = std::numeric_limits<double>::infinity();
-
-    for (auto const &[i, move_and_promote_to] : possible_moves) {
-        auto[move, possible_promote_to] = move_and_promote_to;
-        Cell old_coords = figures[player][i]._coords;
-        auto old_figure_from = figures[player][i];
-        Figure old_figure_to = board[move.to.y][move.to.x];
-        controller_container[figures[player][i]._type]->make_move(
-                {figures[player][i]._coords, move.to}, board, last_move, possible_promote_to);
-        if (figures[player][i]._type == Type::KING) {
-            if (player == 0) {
-                _king_position = move.to;
-            } else {
-                _opponent_king_position = move.to;
-            }
-        }
-        figures[player][i] = board[move.to.y][move.to.x];
-        int index_in_figures = -1;
-        if (old_figure_to != NONE) {
-            for (int j = 0; j < figures[1 - player].size(); j++) {
-                if (figures[1 - player][j]._coords == move.to) {
-                    figures[1 - player].erase(figures[1 - player].begin() + j);
-                    index_in_figures = j;
-                    break;
-                }
-            }
-        }
-        if (double cur_eval = -search(board, {old_coords, move.to}, depth - 1).first;
-                best_eval == std::numeric_limits<double>::infinity() ||
-                is_better(cur_eval, best_eval)) {
-            best_eval = cur_eval;
-            ans = {old_coords, move.to};
-            promote_to = possible_promote_to;
-        }
-        undo_move(board, {old_coords, move.to}, old_figure_from, old_figure_to);
-        figures[player][i] = old_figure_from;
-        if (old_figure_to != NONE) {
-            figures[1 - player].insert(figures[1 - player].begin() + index_in_figures, old_figure_to);
-        }
-        if (figures[player][i]._type == Type::KING) {
-            if (player == 0) {
-                _king_position = old_coords;
-            } else {
-                _opponent_king_position = old_coords;
-            }
-        }
-    }
-
-    return {best_eval, {ans, promote_to}};
+    return possible_moves;
 }
