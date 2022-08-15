@@ -86,7 +86,9 @@ std::pair<Cell, Cell> GameController::handle_from_position() {
                 (column == 7 && row == 7 &&
                  std::ranges::any_of(fen.castles.begin(), fen.castles.end(), [](char ch) {
                      return ch == 'k';
-                 }))
+                 })) ||
+                 (row == 1 && type == Type::PAWN && color == Color::WHITE) ||
+                 (row == 6 && type == Type::PAWN && color == Color::BLACK)
         );
 
         board[row][column] = Figure(type, color, column, row, is_moved);

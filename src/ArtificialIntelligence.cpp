@@ -21,6 +21,7 @@ static bool is_better(double eval1, double eval2) {
 
 Move ArtificialIntelligence::make_move(Board &board, Move last_move) {
     Board board_copy = board;
+    counter = 0;
     figures = get_figures_coords(board, _color);
     for (const auto &figure : figures[1]) {
         if (figure._type == Type::KING) {
@@ -34,10 +35,11 @@ Move ArtificialIntelligence::make_move(Board &board, Move last_move) {
 
     auto[from, to] = ans;
     Type type = board[from.y][from.x]._type;
-    assert(type != Type::EMPTY);
     controller_container[type]->make_move(ans, board, last_move, promote_to);
     if (board[to.y][to.x]._type == Type::KING)
         _king_position = to;
+
+    std::cout << "Positions evaluated: " << counter << std::endl;
 
     return ans;
 }
@@ -49,6 +51,7 @@ static bool is_insufficient(const std::vector<Figure> &figures) {
 }
 
 double ArtificialIntelligence::evaluate(Board &board, Move last_move, Color move) const {
+    counter++;
     Features features = get_features(0, board, last_move);
     Features opponent_features = get_features(1, board, last_move);
 
@@ -89,6 +92,19 @@ void ArtificialIntelligence::undo_move(Board &board, Move last_move, const Figur
     }
     if (figures[player][i]._type == Type::KING) {
         set_king_position(player, last_move.from);
+        if (abs(last_move.from.x - last_move.to.x) == 2) {
+            int rook_delta = last_move.from.x - last_move.to.x < 0 ? -1 : 1;
+            int rook_start_pos = last_move.from.x - last_move.to.x < 0 ? 7 : 0;
+            board[last_move.from.y][rook_start_pos] = board[last_move.to.y][last_move.to.x + rook_delta];
+            board[last_move.from.y][rook_start_pos]._coords = {rook_start_pos, last_move.to.y};
+            figures[player][std::ranges::find_if(figures[player].begin(), figures[player].end(),
+                                                 [&last_move, &rook_delta](const Figure &figure) {
+                                                     return figure._coords ==
+                                                            Cell{last_move.to.x + rook_delta, last_move.to.y};
+                                                 }) - figures[player].begin()]._coords = {rook_start_pos,
+                                                                                          last_move.to.y};
+            board[last_move.to.y][last_move.to.x + rook_delta] = NONE;
+        }
     }
 }
 
@@ -127,6 +143,7 @@ ArtificialIntelligence::get_features(int player, Board &board, Move last_move) c
                                                                             last_move,
                                                                             player == 0 ? _king_position
                                                                                         : _opponent_king_position).size());
+
     }
 
     return res;
@@ -183,9 +200,64 @@ ArtificialIntelligence::search(Board &board, Move last_move, int depth, double a
     return {alpha, {ans, promote_to}};
 }
 
+void ArtificialIntelligence::reorder_moves(int player, Move last_move, Board &board,
+                                           std::vector<std::pair<int, std::pair<Move, Type>>> possible_moves) {
+    auto is_attack = [this, &board, &player, &last_move](Move move, Type promote_to, int i) {
+        Cell old_coords = move.from;
+        auto old_figure_from = board[move.from.y][move.from.x];
+        Figure old_figure_to = board[move.to.y][move.to.x];
+        int index_in_figures = make_pseudo_move(player, i, move, old_figure_to, board, last_move, promote_to);
+
+        auto possible_cells = controller_container[old_figure_from._type]->get_moves(move.to, board, move,
+                                                                                     player == 0 ? _king_position
+                                                                                                 : _opponent_king_position);
+        bool res = std::ranges::any_of(possible_cells.begin(), possible_cells.end(), [&board](Cell a) {
+            return board[a.y][a.x] != NONE;
+        });
+
+        undo_move(board, {old_coords, move.to}, old_figure_from, old_figure_to, player, i, index_in_figures);
+        return res;
+    };
+    auto is_capture = [&board](Move move, Type, int) {
+        return board[move.to.y][move.to.x] != NONE;
+    };
+    auto is_check = [this, &board, &player, &last_move](Move move, Type promote_to, int i) {
+        Cell old_coords = move.from;
+        auto old_figure_from = board[move.from.y][move.from.x];
+        Figure old_figure_to = board[move.to.y][move.to.x];
+        int index_in_figures = make_pseudo_move(player, i, move, old_figure_to, board, last_move, promote_to);
+        bool res = KingController::is_attacked(player == 0 ? _opponent_king_position : _king_position,
+                                               player == 0 ? _color : opposite(_color), board);
+        undo_move(board, {old_coords, move.to}, old_figure_from, old_figure_to, player, i, index_in_figures);
+        return res;
+    };
+
+    std::ranges::sort(possible_moves.begin(), possible_moves.end(),
+                      [&](const std::pair<int, std::pair<Move, Type>> &a,
+                          const std::pair<int, std::pair<Move, Type>> &b) {
+                          Move move_a = a.second.first;
+                          Type promote_to_a = a.second.second;
+                          Move move_b = b.second.first;
+                          Type promote_to_b = b.second.second;
+                          int priority_a = 0;
+                          int priority_b = 0;
+
+                          if (is_check(move_a, promote_to_a, a.first)) priority_a = 3;
+                          if (is_check(move_b, promote_to_b, b.first)) priority_b = 3;
+
+                          if (priority_a == 0 && is_capture(move_a, promote_to_a, a.first)) priority_a = 2;
+                          if (priority_b == 0 && is_capture(move_b, promote_to_b, b.first)) priority_b = 2;
+
+                          if (priority_a == 0 && is_attack(move_a, promote_to_a, a.first)) priority_a = 1;
+                          if (priority_b == 0 && is_attack(move_b, promote_to_b, b.first)) priority_b = 1;
+
+                          return priority_a > priority_b; // We need to look at high-priority moves first
+                      });
+}
+
 std::vector<std::pair<int, std::pair<Move, Type>>> ArtificialIntelligence::get_possible_moves(int player,
                                                                                               Move last_move,
-                                                                                              Board &board) const {
+                                                                                              Board &board) {
     std::vector<std::pair<int, std::pair<Move, Type>>> possible_moves;
     std::vector<Cell> current_cells;
     for (int i = 0; i < figures[player].size(); i++) {
@@ -204,25 +276,38 @@ std::vector<std::pair<int, std::pair<Move, Type>>> ArtificialIntelligence::get_p
             }
         }
     }
+
+    reorder_moves(player, last_move, board, possible_moves);
+
     return possible_moves;
 }
 
 int ArtificialIntelligence::make_pseudo_move(int player, int i, Move move, const Figure &old_figure_to, Board &board,
                                              Move last_move, Type possible_promote_to) {
-    if (figures[player][i]._type == Type::KING) {
-        set_king_position(player, move.to);
-    }
     int index_in_figures = -1;
     if (old_figure_to != NONE) {
         auto iter = std::ranges::find_if(figures[1 - player].begin(), figures[1 - player].end(),
                                          [&](const Figure &figure) {
                                              return figure._coords == move.to;
                                          });
-        figures[1 - player].erase(iter);
         index_in_figures = static_cast<int>(iter - figures[1 - player].begin());
+        figures[1 - player].erase(iter);
     }
     controller_container[figures[player][i]._type]->make_move(
             {figures[player][i]._coords, move.to}, board, last_move, possible_promote_to);
     figures[player][i] = board[move.to.y][move.to.x];
+    if (figures[player][i]._type == Type::KING) {
+        set_king_position(player, move.to);
+        if (abs(move.from.x - move.to.x) == 2) {
+            int rook_delta = move.from.x - move.to.x < 0 ? -1 : 1;
+            int rook_start_pos = move.from.x - move.to.x < 0 ? 7 : 0;
+            figures[player][std::ranges::find_if(figures[player].begin(), figures[player].end(),
+                                                 [&move, &rook_start_pos](const Figure &figure) {
+                                                     return figure._coords == Cell{rook_start_pos, move.to.y};
+                                                 }) - figures[player].begin()]._coords = {move.to.x + rook_delta,
+                                                                                          move.to.y};
+        }
+    }
+
     return index_in_figures;
 }

@@ -18,6 +18,7 @@ private:
     std::mt19937_64 gen;
     std::vector<std::vector<Figure>> figures;
     Cell _opponent_king_position;
+    mutable int counter;
 
     struct Features {
         int kings = 0;
@@ -40,9 +41,11 @@ private:
 
     void set_king_position(int player, Cell new_king_position);
 
-    std::vector<std::pair<int, std::pair<Move, Type>>>
-    get_possible_moves(int player, Move last_move, Board &board) const;
+    std::vector<std::pair<int, std::pair<Move, Type>>> get_possible_moves(int player, Move last_move, Board &board);
 
     int make_pseudo_move(int player, int i, Move move, const Figure &old_figure_to, Board &board, Move last_move,
                          Type possible_promote_to);
+
+    void reorder_moves(int player, Move last_move, Board &board,
+                       std::vector<std::pair<int, std::pair<Move, Type>>> possible_moves);
 };
