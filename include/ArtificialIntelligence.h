@@ -34,7 +34,7 @@ private:
     void undo_move(Board &board, Move last_move, const Figure &old_figure_from, const Figure &old_figure_to, int player,
                    int i, int index_in_figures);
 
-    std::pair<double, std::pair<Move, Type>> search(Board &board, Move last_move, int depth);
+    std::pair<double, std::pair<Move, Type>> search(Board &board, Move last_move, int depth, double alpha, double beta);
 
     Features get_features(int player, Board &board, Move last_move) const;
 
@@ -42,4 +42,7 @@ private:
 
     std::vector<std::pair<int, std::pair<Move, Type>>>
     get_possible_moves(int player, Move last_move, Board &board) const;
+
+    int make_pseudo_move(int player, int i, Move move, const Figure &old_figure_to, Board &board, Move last_move,
+                         Type possible_promote_to);
 };

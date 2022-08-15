@@ -30,7 +30,7 @@ Move ArtificialIntelligence::make_move(Board &board, Move last_move) {
     }
 
     std::vector<Cell> current_moves;
-    auto[ans, promote_to] = search(board_copy, last_move, DEPTH).second;
+    auto[ans, promote_to] = search(board_copy, last_move, DEPTH, -BIG_INFINITY, BIG_INFINITY).second;
 
     auto[from, to] = ans;
     Type type = board[from.y][from.x]._type;
@@ -137,7 +137,8 @@ void ArtificialIntelligence::set_king_position(int player, Cell new_king_positio
     else _opponent_king_position = new_king_position;
 }
 
-std::pair<double, std::pair<Move, Type>> ArtificialIntelligence::search(Board &board, Move last_move, int depth) {
+std::pair<double, std::pair<Move, Type>>
+ArtificialIntelligence::search(Board &board, Move last_move, int depth, double alpha, double beta) {
     int player = (DEPTH - depth) % 2;
     if (depth == 0)
         return {evaluate(board, last_move, (player == 1 ? opposite(_color) : _color)), {Move(), Type::EMPTY}};
@@ -154,7 +155,6 @@ std::pair<double, std::pair<Move, Type>> ArtificialIntelligence::search(Board &b
 
     Move ans;
     Type promote_to = Type::EMPTY;
-    double best_eval = std::numeric_limits<double>::infinity();
 
     for (auto const &[i, move_and_promote_to] : possible_moves) {
         auto move = move_and_promote_to.first;
@@ -162,35 +162,25 @@ std::pair<double, std::pair<Move, Type>> ArtificialIntelligence::search(Board &b
         Cell old_coords = figures[player][i]._coords;
         auto old_figure_from = figures[player][i];
         Figure old_figure_to = board[move.to.y][move.to.x];
-
-        if (figures[player][i]._type == Type::KING) {
-            set_king_position(player, move.to);
-        }
-        int index_in_figures = -1;
-        if (old_figure_to != NONE) {
-            auto iter = std::ranges::find_if(figures[1 - player].begin(), figures[1 - player].end(),
-                                             [&](const Figure &figure) {
-                                                 return figure._coords == move.to;
-                                             });
-            figures[1 - player].erase(iter);
-            index_in_figures = static_cast<int>(iter - figures[1 - player].begin());
-        }
-        controller_container[figures[player][i]._type]->make_move(
-                {figures[player][i]._coords, move.to}, board, last_move, possible_promote_to);
-        figures[player][i] = board[move.to.y][move.to.x];
         // -------------------------------------------------------------------------------------------------------------
-        if (double cur_eval = -search(board, {old_coords, move.to}, depth - 1).first;
-                best_eval == std::numeric_limits<double>::infinity() ||
-                is_better(cur_eval, best_eval)) {
-            best_eval = cur_eval;
+        int index_in_figures = make_pseudo_move(player, i, move, old_figure_to, board, last_move, possible_promote_to);
+        // -------------------------------------------------------------------------------------------------------------
+        double cur_eval = -search(board, {old_coords, move.to}, depth - 1, -beta, -alpha).first;
+        // -------------------------------------------------------------------------------------------------------------
+        undo_move(board, {old_coords, move.to}, old_figure_from, old_figure_to, player, i, index_in_figures);
+        // -------------------------------------------------------------------------------------------------------------
+        if (cur_eval >= beta) {
+            return {beta, {Move(), Type::EMPTY}};
+        }
+
+        if (is_better(cur_eval, alpha)) {
+            alpha = cur_eval;
             ans = {old_coords, move.to};
             promote_to = possible_promote_to;
         }
-        // -------------------------------------------------------------------------------------------------------------
-        undo_move(board, {old_coords, move.to}, old_figure_from, old_figure_to, player, i, index_in_figures);
     }
 
-    return {best_eval, {ans, promote_to}};
+    return {alpha, {ans, promote_to}};
 }
 
 std::vector<std::pair<int, std::pair<Move, Type>>> ArtificialIntelligence::get_possible_moves(int player,
@@ -215,4 +205,24 @@ std::vector<std::pair<int, std::pair<Move, Type>>> ArtificialIntelligence::get_p
         }
     }
     return possible_moves;
+}
+
+int ArtificialIntelligence::make_pseudo_move(int player, int i, Move move, const Figure &old_figure_to, Board &board,
+                                             Move last_move, Type possible_promote_to) {
+    if (figures[player][i]._type == Type::KING) {
+        set_king_position(player, move.to);
+    }
+    int index_in_figures = -1;
+    if (old_figure_to != NONE) {
+        auto iter = std::ranges::find_if(figures[1 - player].begin(), figures[1 - player].end(),
+                                         [&](const Figure &figure) {
+                                             return figure._coords == move.to;
+                                         });
+        figures[1 - player].erase(iter);
+        index_in_figures = static_cast<int>(iter - figures[1 - player].begin());
+    }
+    controller_container[figures[player][i]._type]->make_move(
+            {figures[player][i]._coords, move.to}, board, last_move, possible_promote_to);
+    figures[player][i] = board[move.to.y][move.to.x];
+    return index_in_figures;
 }
