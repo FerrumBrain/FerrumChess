@@ -1,5 +1,7 @@
 #include "../include/ArtificialIntelligence.h"
 
+#include <random>
+
 std::vector<std::vector<Figure>> get_figures_coords(const Board &board, Color color) {
     std::vector<std::vector<Figure>> coords(2);
     for (int i = 0; i < 8; i++) {
@@ -143,7 +145,6 @@ ArtificialIntelligence::get_features(int player, Board &board, Move last_move) c
                                                                             last_move,
                                                                             player == 0 ? _king_position
                                                                                         : _opponent_king_position).size());
-
     }
 
     return res;
@@ -201,7 +202,7 @@ ArtificialIntelligence::search(Board &board, Move last_move, int depth, double a
 }
 
 void ArtificialIntelligence::reorder_moves(int player, Move last_move, Board &board,
-                                           std::vector<std::pair<int, std::pair<Move, Type>>> possible_moves) {
+                                           std::vector<std::pair<int, std::pair<Move, Type>>> &possible_moves) {
     auto is_attack = [this, &board, &player, &last_move](Move move, Type promote_to, int i) {
         Cell old_coords = move.from;
         auto old_figure_from = board[move.from.y][move.from.x];
@@ -278,6 +279,7 @@ std::vector<std::pair<int, std::pair<Move, Type>>> ArtificialIntelligence::get_p
     }
 
     reorder_moves(player, last_move, board, possible_moves);
+    // std::ranges::shuffle(possible_moves.begin(), possible_moves.end(), std::mt19937(std::random_device()()));
 
     return possible_moves;
 }

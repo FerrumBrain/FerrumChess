@@ -47,5 +47,5 @@ private:
                          Type possible_promote_to);
 
     void reorder_moves(int player, Move last_move, Board &board,
-                       std::vector<std::pair<int, std::pair<Move, Type>>> possible_moves);
+                       std::vector<std::pair<int, std::pair<Move, Type>>> &possible_moves);
 };

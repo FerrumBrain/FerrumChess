@@ -28,10 +28,10 @@ std::vector<Cell> PawnController::get_moves(Cell coords, Board &board, Move last
         int last_move_y = last_move.to.y;
         int delta_last_move_y = abs(last_move.from.y - last_move_y);
         if (y == en_passant && board[last_move_y][last_move_x]._type == Type::PAWN && last_move_x == x + 1 &&
-            delta_last_move_y == 2)
+        delta_last_move_y == 2 && board[last_move_y][last_move_x]._color == opposite(color))
             all_possible_moves.emplace_back(x + 1, y + direction);
         if (y == en_passant && board[last_move_y][last_move_x]._type == Type::PAWN && last_move_x == x - 1 &&
-            delta_last_move_y == 2)
+        delta_last_move_y == 2 && board[last_move_y][last_move_x]._color == opposite(color))
             all_possible_moves.emplace_back(x - 1, y + direction);
     }
 
