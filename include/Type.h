@@ -2,13 +2,13 @@
 #include <cassert>
 
 enum class Type : int {
-    EMPTY = 0,
-    PAWN = 1,
-    KNIGHT = 2,
-    BISHOP = 3,
-    ROOK = 4,
-    QUEEN = 5,
-    KING = 6
+    EMPTY = -1,
+    PAWN = 0,
+    KNIGHT = 1,
+    BISHOP = 2,
+    ROOK = 3,
+    QUEEN = 4,
+    KING = 5
 };
 
 inline std::ostream &operator<<(std::ostream &os, const Type &t) {

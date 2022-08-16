@@ -87,8 +87,8 @@ std::pair<Cell, Cell> GameController::handle_from_position() {
                  std::ranges::any_of(fen.castles.begin(), fen.castles.end(), [](char ch) {
                      return ch == 'k';
                  })) ||
-                 (row == 1 && type == Type::PAWN && color == Color::WHITE) ||
-                 (row == 6 && type == Type::PAWN && color == Color::BLACK)
+                (row == 1 && type == Type::PAWN && color == Color::WHITE) ||
+                (row == 6 && type == Type::PAWN && color == Color::BLACK)
         );
 
         board[row][column] = Figure(type, color, column, row, is_moved);
@@ -267,8 +267,10 @@ void GameController::play_game() {
         history.emplace_back(
                 players[i]->make_move(board, history.empty() ? Move() : history.back()));
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-        std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count()
-                  << "[ns]" << std::endl;
+        std::cout << "Time difference = "
+                  << static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count()) /
+                     1000
+                  << "[s]" << std::endl;
         std::cout << "Last move was: " << (char) (history.back().from.x + 'a') << history.back().from.y + 1
                   << " -> " << (char) (history.back().to.x + 'a') << history.back().to.y + 1 << std::endl;
 

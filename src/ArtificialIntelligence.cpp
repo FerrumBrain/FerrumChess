@@ -2,19 +2,37 @@
 
 #include <random>
 
-std::vector<std::vector<Figure>> get_figures_coords(const Board &board, Color color) {
-    std::vector<std::vector<Figure>> coords(2);
+void ArtificialIntelligence::fill_figures(const Board &board) {
+    figures[0].clear();
+    figures[1].clear();
+
+    middlegame_piece_eval = {0, 0};
+    endgame_piece_eval = {0, 0};
+    gamephase = 0;
+
+
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
-            if (board[i][j]._color == color) {
-                coords[0].emplace_back(board[i][j]);
-            } else if (board[i][j]._color == opposite(color)) {
-                coords[1].emplace_back(board[i][j]);
+            if (board[i][j]._color == Color::EMPTY) continue;
+
+            int index = board[i][j]._color == _color ? 0 : 1;
+
+
+            figures[index].emplace_back(board[i][j]);
+            if ((_color == Color::BLACK && index == 0) || (index == 1 && _color == Color::WHITE)) {
+                middlegame_piece_eval[index] += middlegame_piece_value[static_cast<int>(board[i][j]._type)] +
+                                                middlegame_tables[static_cast<int>(board[i][j]._type)][7 - i][7 - j];
+                endgame_piece_eval[index] += endgame_piece_value[static_cast<int>(board[i][j]._type)] +
+                                             endgame_tables[static_cast<int>(board[i][j]._type)][7 - i][7 - j];
+            } else {
+                middlegame_piece_eval[index] += middlegame_piece_value[static_cast<int>(board[i][j]._type)] +
+                                                middlegame_tables[static_cast<int>(board[i][j]._type)][i][j];
+                endgame_piece_eval[index] += endgame_piece_value[static_cast<int>(board[i][j]._type)] +
+                                             endgame_tables[static_cast<int>(board[i][j]._type)][i][j];
             }
+            gamephase += gamephase_values[static_cast<int>(board[i][j]._type)];
         }
     }
-
-    return coords;
 }
 
 static bool is_better(double eval1, double eval2) {
@@ -24,7 +42,7 @@ static bool is_better(double eval1, double eval2) {
 Move ArtificialIntelligence::make_move(Board &board, Move last_move) {
     Board board_copy = board;
     counter = 0;
-    figures = get_figures_coords(board, _color);
+    fill_figures(board);
     for (const auto &figure : figures[1]) {
         if (figure._type == Type::KING) {
             _opponent_king_position = figure._coords;
@@ -52,45 +70,27 @@ static bool is_insufficient(const std::vector<Figure> &figures) {
                                     figures[1]._type == Type::KNIGHT || figures[1]._type == Type::BISHOP));
 }
 
-double ArtificialIntelligence::evaluate(Board &board, Move last_move, Color move) const {
-    counter++;
-    Features features = get_features(0, board, last_move);
-    Features opponent_features = get_features(1, board, last_move);
-
-    double eval;
-    if (move == _color && features.mobility == 0) {
-        if (KingController::is_attacked(_king_position, opposite(_color), board)) {
-            eval = (_color == Color::WHITE ? -1 : 1) * INF;
-        } else {
-            eval = 0;
-        }
-    } else if (move != _color && opponent_features.mobility == 0) {
-        if (KingController::is_attacked(_opponent_king_position, _color, board)) {
-            eval = (_color == Color::WHITE ? 1 : -1) * INF;
-        } else {
-            eval = 0;
-        }
-    } else if (is_insufficient(figures[0]) && is_insufficient(figures[1])) {
-        eval = 0;
-    } else {
-        eval = (200 * (features.kings - opponent_features.kings) +
-                9 * (features.queens - opponent_features.queens) +
-                5 * (features.rooks - opponent_features.rooks) +
-                3 * (features.bishops - opponent_features.bishops) +
-                3 * (features.knights - opponent_features.knights) +
-                1 * (features.pawns - opponent_features.pawns) +
-                0.1 * (features.mobility - opponent_features.mobility)) * (_color == Color::WHITE ? 1 : -1);
-    }
-    return eval * (move == Color::WHITE ? 1 : -1); // other features?
-}
-
 void ArtificialIntelligence::undo_move(Board &board, Move last_move, const Figure &old_figure_from,
                                        const Figure &old_figure_to, int player, int i, int index_in_figures) {
+    change_eval(player, -1, i, last_move.to);
     board[last_move.from.y][last_move.from.x] = old_figure_from;
     board[last_move.to.y][last_move.to.x] = old_figure_to;
     figures[player][i] = old_figure_from;
+    change_eval(player, +1, i, last_move.from);
     if (index_in_figures != -1) {
-        figures[1 - player].insert(figures[1 - player].begin() + index_in_figures, old_figure_to);
+        if (old_figure_to._type == Type::EMPTY && last_move.from.x - last_move.to.x != 0) {
+            int delta = figures[player][i]._color == Color::WHITE ? -1 : 1;
+            figures[1 - player].insert(figures[1 - player].begin() + index_in_figures, old_figure_from);
+            figures[1 - player][index_in_figures]._color = opposite(figures[player][i]._color);
+            figures[1 - player][index_in_figures]._coords = {last_move.to.x,
+                                                             last_move.to.y + delta};
+            change_eval(1 - player, +1, index_in_figures, {last_move.to.x, last_move.to.y + delta});
+            gamephase += gamephase_values[static_cast<int>(figures[1 - player][index_in_figures]._type)];
+        } else {
+            figures[1 - player].insert(figures[1 - player].begin() + index_in_figures, old_figure_to);
+            change_eval(1 - player, +1, index_in_figures, last_move.to);
+            gamephase += gamephase_values[static_cast<int>(figures[1 - player][index_in_figures]._type)];
+        }
     }
     if (figures[player][i]._type == Type::KING) {
         set_king_position(player, last_move.from);
@@ -99,55 +99,18 @@ void ArtificialIntelligence::undo_move(Board &board, Move last_move, const Figur
             int rook_start_pos = last_move.from.x - last_move.to.x < 0 ? 7 : 0;
             board[last_move.from.y][rook_start_pos] = board[last_move.to.y][last_move.to.x + rook_delta];
             board[last_move.from.y][rook_start_pos]._coords = {rook_start_pos, last_move.to.y};
-            figures[player][std::ranges::find_if(figures[player].begin(), figures[player].end(),
-                                                 [&last_move, &rook_delta](const Figure &figure) {
-                                                     return figure._coords ==
-                                                            Cell{last_move.to.x + rook_delta, last_move.to.y};
-                                                 }) - figures[player].begin()]._coords = {rook_start_pos,
-                                                                                          last_move.to.y};
+            auto index = static_cast<int>(std::ranges::find_if(figures[player].begin(), figures[player].end(),
+                                                               [&last_move, &rook_delta](const Figure &figure) {
+                                                                   return figure._coords ==
+                                                                          Cell{last_move.to.x + rook_delta,
+                                                                               last_move.to.y};
+                                                               }) - figures[player].begin());
+            change_eval(player, -1, index, {last_move.to.x + rook_delta, last_move.to.y});
+            figures[player][index]._coords = {rook_start_pos, last_move.to.y};
+            change_eval(player, +1, index, {rook_start_pos, last_move.to.y});
             board[last_move.to.y][last_move.to.x + rook_delta] = NONE;
         }
     }
-}
-
-//Well, SonarLint asks to mark this method as const, but it's static, so...
-//NOLINTNEXTLINE
-ArtificialIntelligence::Features
-ArtificialIntelligence::get_features(int player, Board &board, Move last_move) const {
-    Features res;
-
-    for (const auto &figure: figures[player]) {
-        switch (figure._type) {
-            case Type::PAWN:
-                res.pawns++;
-                break;
-            case Type::ROOK:
-                res.rooks++;
-                break;
-            case Type::KNIGHT:
-                res.knights++;
-                break;
-            case Type::BISHOP:
-                res.bishops++;
-                break;
-            case Type::QUEEN:
-                res.queens++;
-                break;
-            case Type::KING:
-                res.kings++;
-                break;
-            default:
-                break;
-        }
-        res.mobility += static_cast<int>(controller_container.at(
-                board[figure._coords.y][figure._coords.x]._type)->get_moves(figure._coords,
-                                                                            board,
-                                                                            last_move,
-                                                                            player == 0 ? _king_position
-                                                                                        : _opponent_king_position).size());
-    }
-
-    return res;
 }
 
 void ArtificialIntelligence::set_king_position(int player, Cell new_king_position) {
@@ -155,11 +118,9 @@ void ArtificialIntelligence::set_king_position(int player, Cell new_king_positio
     else _opponent_king_position = new_king_position;
 }
 
-std::pair<double, std::pair<Move, Type>>
-ArtificialIntelligence::search(Board &board, Move last_move, int depth, double alpha, double beta) {
+std::pair<int, std::pair<Move, Type>>
+ArtificialIntelligence::search(Board &board, Move last_move, int depth, int alpha, int beta) {
     int player = (DEPTH - depth) % 2;
-    if (depth == 0)
-        return {evaluate(board, last_move, (player == 1 ? opposite(_color) : _color)), {Move(), Type::EMPTY}};
 
     std::vector<std::pair<int, std::pair<Move, Type>>> possible_moves = get_possible_moves(player, last_move, board);
 
@@ -170,6 +131,13 @@ ArtificialIntelligence::search(Board &board, Move last_move, int depth, double a
         }
         return {0, {Move(), Type::EMPTY}};
     }
+
+    if (is_insufficient(figures[0]) && is_insufficient(figures[1])) {
+        return {0, {Move(), Type::EMPTY}};
+    }
+
+    if (depth == 0)
+        return {evaluate(player), {Move(), Type::EMPTY}};
 
     Move ans;
     Type promote_to = Type::EMPTY;
@@ -183,7 +151,7 @@ ArtificialIntelligence::search(Board &board, Move last_move, int depth, double a
         // -------------------------------------------------------------------------------------------------------------
         int index_in_figures = make_pseudo_move(player, i, move, old_figure_to, board, last_move, possible_promote_to);
         // -------------------------------------------------------------------------------------------------------------
-        double cur_eval = -search(board, {old_coords, move.to}, depth - 1, -beta, -alpha).first;
+        int cur_eval = -search(board, {old_coords, move.to}, depth - 1, -beta, -alpha).first;
         // -------------------------------------------------------------------------------------------------------------
         undo_move(board, {old_coords, move.to}, old_figure_from, old_figure_to, player, i, index_in_figures);
         // -------------------------------------------------------------------------------------------------------------
@@ -279,13 +247,14 @@ std::vector<std::pair<int, std::pair<Move, Type>>> ArtificialIntelligence::get_p
     }
 
     reorder_moves(player, last_move, board, possible_moves);
-    // std::ranges::shuffle(possible_moves.begin(), possible_moves.end(), std::mt19937(std::random_device()()));
 
     return possible_moves;
 }
 
+
 int ArtificialIntelligence::make_pseudo_move(int player, int i, Move move, const Figure &old_figure_to, Board &board,
                                              Move last_move, Type possible_promote_to) {
+    change_eval(player, -1, i, move.from);
     int index_in_figures = -1;
     if (old_figure_to != NONE) {
         auto iter = std::ranges::find_if(figures[1 - player].begin(), figures[1 - player].end(),
@@ -293,6 +262,18 @@ int ArtificialIntelligence::make_pseudo_move(int player, int i, Move move, const
                                              return figure._coords == move.to;
                                          });
         index_in_figures = static_cast<int>(iter - figures[1 - player].begin());
+        change_eval(1 - player, -1, index_in_figures, move.to);
+        gamephase -= gamephase_values[static_cast<int>(figures[1 - player][index_in_figures]._type)];
+        figures[1 - player].erase(iter);
+    } else if (figures[player][i]._type == Type::PAWN && move.to.x - move.from.x != 0) {
+        int delta = figures[player][i]._color == Color::WHITE ? -1 : 1;
+        auto iter = std::ranges::find_if(figures[1 - player].begin(), figures[1 - player].end(),
+                                         [&](const Figure &figure) {
+                                             return figure._coords == Cell{move.to.x, move.to.y + delta};
+                                         });
+        index_in_figures = static_cast<int>(iter - figures[1 - player].begin());
+        change_eval(1 - player, -1, index_in_figures, {move.to.x, move.to.y + delta});
+        gamephase -= gamephase_values[static_cast<int>(figures[1 - player][index_in_figures]._type)];
         figures[1 - player].erase(iter);
     }
     controller_container[figures[player][i]._type]->make_move(
@@ -303,13 +284,62 @@ int ArtificialIntelligence::make_pseudo_move(int player, int i, Move move, const
         if (abs(move.from.x - move.to.x) == 2) {
             int rook_delta = move.from.x - move.to.x < 0 ? -1 : 1;
             int rook_start_pos = move.from.x - move.to.x < 0 ? 7 : 0;
-            figures[player][std::ranges::find_if(figures[player].begin(), figures[player].end(),
-                                                 [&move, &rook_start_pos](const Figure &figure) {
-                                                     return figure._coords == Cell{rook_start_pos, move.to.y};
-                                                 }) - figures[player].begin()]._coords = {move.to.x + rook_delta,
-                                                                                          move.to.y};
+            auto index = static_cast<int>(std::ranges::find_if(figures[player].begin(), figures[player].end(),
+                                                               [&move, &rook_start_pos](const Figure &figure) {
+                                                                   return figure._coords ==
+                                                                          Cell{rook_start_pos, move.to.y};
+                                                               }) - figures[player].begin());
+            change_eval(player, -1, index, {rook_start_pos, move.to.y});
+            figures[player][index]._coords = {move.to.x + rook_delta, move.to.y};
+            change_eval(player, +1, index, {move.to.x + rook_delta, move.to.y});
         }
     }
+    change_eval(player, +1, i, move.to);
 
     return index_in_figures;
+}
+
+int ArtificialIntelligence::evaluate(int player) const {
+    counter++;
+
+    int middlegame_phase = std::min(gamephase, 24);
+    return ((middlegame_piece_eval[player] - middlegame_piece_eval[1 - player]) * middlegame_phase +
+            (endgame_piece_eval[player] - endgame_piece_eval[1 - player]) * (24 - middlegame_phase)) / 24;
+
+}
+
+void ArtificialIntelligence::change_eval(int player, int sign, int i, Cell cell) {
+    if (player == 0) {
+        if (_color == Color::WHITE) {
+            middlegame_piece_eval[player] +=
+                    (middlegame_tables[static_cast<int>(figures[player][i]._type)][cell.y][cell.x] +
+                     middlegame_piece_value[static_cast<int>(figures[player][i]._type)]) * sign;
+            endgame_piece_eval[player] +=
+                    (endgame_tables[static_cast<int>(figures[player][i]._type)][cell.y][cell.x] +
+                     endgame_piece_value[static_cast<int>(figures[player][i]._type)]) * sign;
+        } else {
+            middlegame_piece_eval[player] +=
+                    (middlegame_tables[static_cast<int>(figures[player][i]._type)][7 - cell.y][7 - cell.x] +
+                     middlegame_piece_value[static_cast<int>(figures[player][i]._type)]) * sign;
+            endgame_piece_eval[player] +=
+                    (endgame_tables[static_cast<int>(figures[player][i]._type)][7 - cell.y][7 - cell.x] +
+                     endgame_piece_value[static_cast<int>(figures[player][i]._type)]) * sign;
+        }
+    } else {
+        if (_color == Color::BLACK) {
+            middlegame_piece_eval[player] +=
+                    (middlegame_tables[static_cast<int>(figures[player][i]._type)][cell.y][cell.x] +
+                     middlegame_piece_value[static_cast<int>(figures[player][i]._type)]) * sign;
+            endgame_piece_eval[player] +=
+                    (endgame_tables[static_cast<int>(figures[player][i]._type)][cell.y][cell.x] +
+                     endgame_piece_value[static_cast<int>(figures[player][i]._type)]) * sign;
+        } else {
+            middlegame_piece_eval[player] +=
+                    (middlegame_tables[static_cast<int>(figures[player][i]._type)][7 - cell.y][7 - cell.x] +
+                     middlegame_piece_value[static_cast<int>(figures[player][i]._type)]) * sign;
+            endgame_piece_eval[player] +=
+                    (endgame_tables[static_cast<int>(figures[player][i]._type)][7 - cell.y][7 - cell.x] +
+                     endgame_piece_value[static_cast<int>(figures[player][i]._type)]) * sign;
+        }
+    }
 }

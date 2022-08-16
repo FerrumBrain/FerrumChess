@@ -8,7 +8,7 @@ void FigureController::make_move(Move move, Board &board, Move last_move,
                        Type promote_to) {
     auto [from, to] = move;
 
-    int step = (board[from.y][from.x]._color == Color::WHITE) ? 1 : -1;
+    int step = (board[from.y][from.x]._color == Color::WHITE) ? -1 : 1;
 
 
     if (board[from.y][from.x]._type == Type::PAWN && to.y % 7 == 0) {

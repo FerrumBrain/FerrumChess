@@ -1,7 +1,7 @@
 enum class Color : int {
-    EMPTY,
-    WHITE,
-    BLACK
+    EMPTY = -1,
+    WHITE = 0,
+    BLACK = 1
 };
 
 inline Color opposite(Color color) {
