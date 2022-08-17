@@ -23,3 +23,10 @@ for surname in ["Carlsen", "Caruana", "Ding", "Aronian", "Mamedyarov", "Nepomnia
         f1.write(res)
     f.close()
 f1.close()
+f = open("opening_book.txt", "r")
+lines = sorted(f.readlines())
+f.close()
+f1 = open("opening_book.txt", "w")
+for line in lines:
+    f1.write(line)
+f1.close()
