@@ -10,7 +10,6 @@ void ArtificialIntelligence::fill_figures(const Board &board) {
     endgame_piece_eval = {0, 0};
     gamephase = 0;
 
-
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             if (board[i][j]._color == Color::EMPTY) continue;
@@ -49,6 +48,7 @@ Move ArtificialIntelligence::make_move(Board &board, Move last_move) {
             break;
         }
     }
+    hash_position(board);
 
     std::vector<Cell> current_moves;
     auto[ans, promote_to] = search(board_copy, last_move, DEPTH, -BIG_INFINITY, BIG_INFINITY).second;
@@ -73,10 +73,14 @@ static bool is_insufficient(const std::vector<Figure> &figures) {
 void ArtificialIntelligence::undo_move(Board &board, Move last_move, const Figure &old_figure_from,
                                        const Figure &old_figure_to, int player, int i, int index_in_figures) {
     change_eval(player, -1, i, last_move.to);
+    hash ^= zobrist_table[8 * last_move.to.y + last_move.to.x][2 * static_cast<int>(figures[player][i]._type) +
+                                                               static_cast<int>(figures[player][i]._color)];
     board[last_move.from.y][last_move.from.x] = old_figure_from;
     board[last_move.to.y][last_move.to.x] = old_figure_to;
     figures[player][i] = old_figure_from;
     change_eval(player, +1, i, last_move.from);
+    hash ^= zobrist_table[8 * last_move.from.y + last_move.from.x][2 * static_cast<int>(figures[player][i]._type) +
+                                                                   static_cast<int>(figures[player][i]._color)];
     if (index_in_figures != -1) {
         if (old_figure_to._type == Type::EMPTY && last_move.from.x - last_move.to.x != 0) {
             int delta = figures[player][i]._color == Color::WHITE ? -1 : 1;
@@ -85,10 +89,17 @@ void ArtificialIntelligence::undo_move(Board &board, Move last_move, const Figur
             figures[1 - player][index_in_figures]._coords = {last_move.to.x,
                                                              last_move.to.y + delta};
             change_eval(1 - player, +1, index_in_figures, {last_move.to.x, last_move.to.y + delta});
+            hash ^= zobrist_table[8 * (last_move.to.y + delta) + last_move.to.x][
+                    2 * static_cast<int>(figures[1 - player][index_in_figures]._type) +
+                    static_cast<int>(figures[1 - player][index_in_figures]._color)];
             gamephase += gamephase_values[static_cast<int>(figures[1 - player][index_in_figures]._type)];
         } else {
             figures[1 - player].insert(figures[1 - player].begin() + index_in_figures, old_figure_to);
             change_eval(1 - player, +1, index_in_figures, last_move.to);
+            hash ^= zobrist_table[8 * last_move.to.y + last_move.to.x][
+                    2 * static_cast<int>(figures[1 - player][index_in_figures]._type) +
+                    static_cast<int>(figures[1 - player][index_in_figures]._color)];
+
             gamephase += gamephase_values[static_cast<int>(figures[1 - player][index_in_figures]._type)];
         }
     }
@@ -106,8 +117,15 @@ void ArtificialIntelligence::undo_move(Board &board, Move last_move, const Figur
                                                                                last_move.to.y};
                                                                }) - figures[player].begin());
             change_eval(player, -1, index, {last_move.to.x + rook_delta, last_move.to.y});
+            hash ^= zobrist_table[8 * last_move.to.y + last_move.to.x + rook_delta][
+                    2 * static_cast<int>(figures[player][index]._type) +
+                    static_cast<int>(figures[player][index]._color)];
             figures[player][index]._coords = {rook_start_pos, last_move.to.y};
             change_eval(player, +1, index, {rook_start_pos, last_move.to.y});
+            hash ^= zobrist_table[8 * last_move.to.y + rook_start_pos][
+                    2 * static_cast<int>(figures[player][index]._type) +
+                    static_cast<int>(figures[player][index]._color)];
+
             board[last_move.to.y][last_move.to.x + rook_delta] = NONE;
         }
     }
@@ -121,6 +139,12 @@ void ArtificialIntelligence::set_king_position(int player, Cell new_king_positio
 std::pair<int, std::pair<Move, Type>>
 ArtificialIntelligence::search(Board &board, Move last_move, int depth, int alpha, int beta) {
     int player = (DEPTH - depth) % 2;
+    Move ans;
+    Type promote_to = Type::EMPTY;
+
+    if (trasposition_table.contains({player, hash, depth, alpha, beta})) {
+        return trasposition_table.at({player, hash, depth, alpha, beta});
+    }
 
     std::vector<std::pair<int, std::pair<Move, Type>>> possible_moves = get_possible_moves(player, last_move, board);
 
@@ -139,9 +163,6 @@ ArtificialIntelligence::search(Board &board, Move last_move, int depth, int alph
     if (depth == 0)
         return {evaluate(player), {Move(), Type::EMPTY}};
 
-    Move ans;
-    Type promote_to = Type::EMPTY;
-
     for (auto const &[i, move_and_promote_to] : possible_moves) {
         auto move = move_and_promote_to.first;
         auto possible_promote_to = move_and_promote_to.second;
@@ -156,6 +177,7 @@ ArtificialIntelligence::search(Board &board, Move last_move, int depth, int alph
         undo_move(board, {old_coords, move.to}, old_figure_from, old_figure_to, player, i, index_in_figures);
         // -------------------------------------------------------------------------------------------------------------
         if (cur_eval >= beta) {
+            trasposition_table[{player, hash, depth, alpha, beta}] = {beta, {Move(), Type::EMPTY}};
             return {beta, {Move(), Type::EMPTY}};
         }
 
@@ -165,6 +187,8 @@ ArtificialIntelligence::search(Board &board, Move last_move, int depth, int alph
             promote_to = possible_promote_to;
         }
     }
+
+    trasposition_table[{player, hash, depth, alpha, beta}] = {alpha, {ans, promote_to}};
 
     return {alpha, {ans, promote_to}};
 }
@@ -255,6 +279,8 @@ std::vector<std::pair<int, std::pair<Move, Type>>> ArtificialIntelligence::get_p
 int ArtificialIntelligence::make_pseudo_move(int player, int i, Move move, const Figure &old_figure_to, Board &board,
                                              Move last_move, Type possible_promote_to) {
     change_eval(player, -1, i, move.from);
+    hash ^= zobrist_table[8 * move.from.y + move.from.x][2 * static_cast<int>(figures[player][i]._type) +
+                                                         static_cast<int>(figures[player][i]._color)];
     int index_in_figures = -1;
     if (old_figure_to != NONE) {
         auto iter = std::ranges::find_if(figures[1 - player].begin(), figures[1 - player].end(),
@@ -263,6 +289,9 @@ int ArtificialIntelligence::make_pseudo_move(int player, int i, Move move, const
                                          });
         index_in_figures = static_cast<int>(iter - figures[1 - player].begin());
         change_eval(1 - player, -1, index_in_figures, move.to);
+        hash ^= zobrist_table[8 * move.to.y + move.to.x][
+                2 * static_cast<int>(figures[1 - player][index_in_figures]._type) +
+                static_cast<int>(figures[1 - player][index_in_figures]._color)];
         gamephase -= gamephase_values[static_cast<int>(figures[1 - player][index_in_figures]._type)];
         figures[1 - player].erase(iter);
     } else if (figures[player][i]._type == Type::PAWN && move.to.x - move.from.x != 0) {
@@ -273,6 +302,9 @@ int ArtificialIntelligence::make_pseudo_move(int player, int i, Move move, const
                                          });
         index_in_figures = static_cast<int>(iter - figures[1 - player].begin());
         change_eval(1 - player, -1, index_in_figures, {move.to.x, move.to.y + delta});
+        hash ^= zobrist_table[8 * (move.to.y + delta) + move.to.x][
+                2 * static_cast<int>(figures[1 - player][index_in_figures]._type) +
+                static_cast<int>(figures[1 - player][index_in_figures]._color)];
         gamephase -= gamephase_values[static_cast<int>(figures[1 - player][index_in_figures]._type)];
         figures[1 - player].erase(iter);
     }
@@ -290,11 +322,18 @@ int ArtificialIntelligence::make_pseudo_move(int player, int i, Move move, const
                                                                           Cell{rook_start_pos, move.to.y};
                                                                }) - figures[player].begin());
             change_eval(player, -1, index, {rook_start_pos, move.to.y});
+            hash ^= zobrist_table[8 * move.to.y + rook_start_pos][2 * static_cast<int>(figures[player][index]._type) +
+                                                                  static_cast<int>(figures[player][index]._color)];
             figures[player][index]._coords = {move.to.x + rook_delta, move.to.y};
             change_eval(player, +1, index, {move.to.x + rook_delta, move.to.y});
+            hash ^= zobrist_table[8 * move.to.y + move.to.x + rook_delta][
+                    2 * static_cast<int>(figures[player][index]._type) +
+                    static_cast<int>(figures[player][index]._color)];
         }
     }
     change_eval(player, +1, i, move.to);
+    hash ^= zobrist_table[8 * move.to.y + move.to.x][2 * static_cast<int>(figures[player][i]._type) +
+                                                     static_cast<int>(figures[player][i]._color)];
 
     return index_in_figures;
 }
@@ -340,6 +379,19 @@ void ArtificialIntelligence::change_eval(int player, int sign, int i, Cell cell)
             endgame_piece_eval[player] +=
                     (endgame_tables[static_cast<int>(figures[player][i]._type)][7 - cell.y][7 - cell.x] +
                      endgame_piece_value[static_cast<int>(figures[player][i]._type)]) * sign;
+        }
+    }
+}
+
+void ArtificialIntelligence::hash_position(const Board &board) {
+    hash = 0;
+
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            if (board[i][j]._type == Type::EMPTY)
+                continue;
+            hash ^= zobrist_table[8 * i + j][2 * static_cast<int>(board[i][j]._type) +
+                                             static_cast<int>(board[i][j]._color)];
         }
     }
 }
