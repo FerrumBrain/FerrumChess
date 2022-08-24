@@ -1,4 +1,4 @@
-f1 = open("opening_book.txt", "w")
+f1 = open("opening_book_notation.txt", "w")
 for surname in ["Carlsen", "Caruana", "Ding", "Aronian", "Mamedyarov", "Nepomniachtchi", "Tal", "Kasparov", "Fischer", "Anand"]:
     f = open(surname + ".pgn", "r")
     flag = True
@@ -23,10 +23,10 @@ for surname in ["Carlsen", "Caruana", "Ding", "Aronian", "Mamedyarov", "Nepomnia
         f1.write(res)
     f.close()
 f1.close()
-f = open("opening_book.txt", "r")
+f = open("opening_book_notation.txt", "r")
 lines = sorted(f.readlines())
 f.close()
-f1 = open("opening_book.txt", "w")
+f1 = open("opening_book_notation.txt", "w")
 for line in lines:
     f1.write(line)
 f1.close()

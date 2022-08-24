@@ -18,4 +18,5 @@ set(CLIENT_PROJECT_SOURCES
         src/UIController.cpp
         )
 add_executable(FerrumChess ${CLIENT_PROJECT_SOURCES})
+add_executable(OpeningBook database/notation_to_moves.cpp)
 target_link_libraries(FerrumChess ${CLIENT_LIBS})
