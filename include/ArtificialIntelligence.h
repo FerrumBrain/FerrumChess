@@ -3,6 +3,8 @@
 #include "Intelligence.h"
 #include <random>
 #include <chrono>
+#include <fstream>
+#include <sstream>
 
 struct hash_tuple {
 
@@ -16,14 +18,7 @@ class ArtificialIntelligence : public Intelligence {
 public:
     // Clang-tidy says that this seed will generate predictable random numbers
     // NOLINTNEXTLINE
-    ArtificialIntelligence(Color color, Cell king_position) : Intelligence(color, king_position) {
-        gen.seed(std::chrono::high_resolution_clock::now().time_since_epoch().count());
-        for (auto &square : zobrist_table) {
-            std::ranges::for_each(square.begin(), square.end(), [this](unsigned long long &value) {
-                value = gen();
-            });
-        }
-    }
+    ArtificialIntelligence(Color color, Cell king_position);
 
     Move make_move(Board &board, Move last_move) override;
 
@@ -32,11 +27,13 @@ private:
     std::vector<std::vector<Figure>> figures = {{},
                                                 {}};
     Cell _opponent_king_position;
-    mutable int counter;
+    mutable int counter = 0;
 
     unsigned long long hash = 0;
 
     std::unordered_map<std::tuple<int, unsigned long long, int, int, int>, std::pair<int, std::pair<Move, Type>>, hash_tuple> trasposition_table;
+
+    std::unordered_map<unsigned long long, std::pair<std::vector<Move>, std::vector<int>>> opening_table;
 
     std::vector<std::vector<unsigned long long>>
             zobrist_table = std::vector<std::vector<unsigned long long>>(64, std::vector<unsigned long long>(12, 0));

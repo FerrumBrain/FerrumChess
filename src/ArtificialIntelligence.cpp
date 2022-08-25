@@ -50,8 +50,16 @@ Move ArtificialIntelligence::make_move(Board &board, Move last_move) {
     }
     hash_position(board);
 
-    std::vector<Cell> current_moves;
-    auto[ans, promote_to] = search(board_copy, last_move, DEPTH, -BIG_INFINITY, BIG_INFINITY).second;
+    Move ans;
+    Type promote_to;
+    if (opening_table.contains(hash)) {
+        std::discrete_distribution<int> distribution(opening_table[hash].second.begin(),
+                                                     opening_table[hash].second.end());
+        ans = opening_table[hash].first[distribution(gen)];
+        promote_to = Type::EMPTY;
+    } else {
+        std::tie(ans, promote_to) = search(board_copy, last_move, DEPTH, -BIG_INFINITY, BIG_INFINITY).second;
+    }
 
     auto[from, to] = ans;
     Type type = board[from.y][from.x]._type;
@@ -88,6 +96,7 @@ void ArtificialIntelligence::undo_move(Board &board, Move last_move, const Figur
             figures[1 - player][index_in_figures]._color = opposite(figures[player][i]._color);
             figures[1 - player][index_in_figures]._coords = {last_move.to.x,
                                                              last_move.to.y + delta};
+            board[last_move.to.y + delta][last_move.to.x] = figures[1 - player][index_in_figures];
             change_eval(1 - player, +1, index_in_figures, {last_move.to.x, last_move.to.y + delta});
             hash ^= zobrist_table[8 * (last_move.to.y + delta) + last_move.to.x][
                     2 * static_cast<int>(figures[1 - player][index_in_figures]._type) +
@@ -99,7 +108,6 @@ void ArtificialIntelligence::undo_move(Board &board, Move last_move, const Figur
             hash ^= zobrist_table[8 * last_move.to.y + last_move.to.x][
                     2 * static_cast<int>(figures[1 - player][index_in_figures]._type) +
                     static_cast<int>(figures[1 - player][index_in_figures]._color)];
-
             gamephase += gamephase_values[static_cast<int>(figures[1 - player][index_in_figures]._type)];
         }
     }
@@ -394,4 +402,36 @@ void ArtificialIntelligence::hash_position(const Board &board) {
                                              static_cast<int>(board[i][j]._color)];
         }
     }
+}
+
+ArtificialIntelligence::ArtificialIntelligence(Color color, Cell king_position) : Intelligence(color, king_position) {
+    gen.seed(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+
+    std::ifstream input("../database/opening_book.txt");
+
+    for (auto &row : zobrist_table) {
+        for (auto &value : row) {
+            input >> value;
+        }
+    }
+
+    unsigned long long cur_position = 0;
+    Move cur_move;
+    int cur_freq;
+    std::string raw_string;
+    while (std::getline(input, raw_string)) {
+        std::stringstream opening_table_row(raw_string);
+        opening_table_row >> cur_position;
+        while (opening_table_row >> raw_string) {
+            cur_move.from.x = raw_string[0] - '0';
+            cur_move.from.y = raw_string[1] - '0';
+            cur_move.to.x = raw_string[2] - '0';
+            cur_move.to.y = raw_string[3] - '0';
+            opening_table_row >> cur_freq;
+            opening_table[cur_position].first.emplace_back(cur_move);
+            opening_table[cur_position].second.emplace_back(cur_freq);
+        }
+    }
+
+    input.close();
 }
