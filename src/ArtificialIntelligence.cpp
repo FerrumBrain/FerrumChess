@@ -349,13 +349,27 @@ int ArtificialIntelligence::make_pseudo_move(int player, int i, Move move, const
     return index_in_figures;
 }
 
+static bool if_not_pawn(const Figure &figure) {
+    return figure._type != Type::PAWN;
+}
+
+static bool is_need_to_mop_up(const std::vector<std::vector<Figure>> &figures, int gamephase) {
+    return figures[0].size() + figures[1].size() <= 5 &&
+           std::ranges::all_of(figures[0].begin(), figures[0].end(), if_not_pawn) &&
+           std::ranges::all_of(figures[1].begin(), figures[1].end(), if_not_pawn) &&
+           gamephase > 12;
+}
+
 int ArtificialIntelligence::evaluate(int player) const {
     counter++;
 
-    int middlegame_phase = std::min(gamephase, 24);
-    return ((middlegame_piece_eval[player] - middlegame_piece_eval[1 - player]) * middlegame_phase +
-            (endgame_piece_eval[player] - endgame_piece_eval[1 - player]) * (24 - middlegame_phase)) / 24;
-
+    if (is_need_to_mop_up(figures, gamephase)) {
+        return mop_up_eval(endgame_piece_eval[0] > endgame_piece_eval[1] ? 1 : 0);
+    } else {
+        int middlegame_phase = std::min(gamephase, 24);
+        return ((middlegame_piece_eval[player] - middlegame_piece_eval[1 - player]) * middlegame_phase +
+                (endgame_piece_eval[player] - endgame_piece_eval[1 - player]) * (24 - middlegame_phase)) / 24;
+    }
 }
 
 void ArtificialIntelligence::change_eval(int player, int sign, int i, Cell cell) {
@@ -448,3 +462,15 @@ void ArtificialIntelligence::store_position(const Board &board) {
     hash_position(board);
     history[hash]++;
 }
+
+static int get_manhattan_to_center(Cell cell) {
+    return std::max(cell.x - 4, 3 - cell.x) + std::max(cell.y - 4, 3 - cell.y);
+}
+
+int ArtificialIntelligence::mop_up_eval(int losing_player) const {
+    Cell losing_king = losing_player == 0 ? _king_position : _opponent_king_position;
+    Cell winning_king = losing_player == 0 ? _opponent_king_position : _king_position;
+    return 10 * get_manhattan_to_center(losing_king) +
+           4 * (14 - (std::abs(winning_king.x - losing_king.x) + std::abs(winning_king.y - losing_king.y)));
+}
+

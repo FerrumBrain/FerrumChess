@@ -196,4 +196,6 @@ private:
     void change_eval(int player, int sign, int i, Cell cell);
 
     void hash_position(const Board &board) const;
+
+    int mop_up_eval(int losing_player) const;
 };
