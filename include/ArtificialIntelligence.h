@@ -22,6 +22,9 @@ public:
 
     Move make_move(Board &board, Move last_move) override;
 
+    int positions_count(const Board &board) const;
+
+    void store_position(const Board &board);
 private:
     std::mt19937_64 gen;
     std::vector<std::vector<Figure>> figures = {{},
@@ -29,11 +32,13 @@ private:
     Cell _opponent_king_position;
     mutable int counter = 0;
 
-    unsigned long long hash = 0;
+    mutable unsigned long long hash = 0;
 
     std::unordered_map<std::tuple<int, unsigned long long, int, int, int>, std::pair<int, std::pair<Move, Type>>, hash_tuple> trasposition_table;
 
     std::unordered_map<unsigned long long, std::pair<std::vector<Move>, std::vector<int>>> opening_table;
+
+    std::unordered_map<unsigned long long, int> history;
 
     std::vector<std::vector<unsigned long long>>
             zobrist_table = std::vector<std::vector<unsigned long long>>(64, std::vector<unsigned long long>(12, 0));
@@ -190,5 +195,5 @@ private:
 
     void change_eval(int player, int sign, int i, Cell cell);
 
-    void hash_position(const Board &board);
+    void hash_position(const Board &board) const;
 };

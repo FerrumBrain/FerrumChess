@@ -3,10 +3,6 @@
 #include <cassert>
 #include <chrono>
 
-int GameController::last_move_for_50move = 0;
-Board GameController::board = {};
-History GameController::history = {};
-
 static std::pair<Type, Color> char_to_type_and_color(char c) {
     std::pair<Type, Color> ans = {Type::EMPTY, isupper(c) == 0 ? Color::BLACK : Color::WHITE};
     c = static_cast<char>(tolower(c));
@@ -184,24 +180,26 @@ std::vector<Move> get_possible_moves(Color color, Cell king_position, Board &boa
     return possible_moves;
 }
 
-bool GameController::is_mate(Color color, Cell king_position) {
-    auto possible_moves = get_possible_moves(color, king_position, board, history);
+bool GameController::is_mate(Color color, Cell king_position) const {
+    auto possible_moves = get_possible_moves(color, king_position, const_cast<Board &>(board),
+                                             history); // I know, this is bad, but this function is logically const, but board shouldn't be mutable, so...
     Color opposite_color = (color == Color::WHITE) ? Color::BLACK : Color::WHITE;
     return possible_moves.empty() && KingController::is_attacked(king_position, opposite_color, board);
 }
 
 
-bool GameController::is_stalemate(Color color, Cell king_position) {
-    auto possible_moves = get_possible_moves(color, king_position, board, history);
+bool GameController::is_stalemate(Color color, Cell king_position) const {
+    auto possible_moves = get_possible_moves(color, king_position, const_cast<Board &>(board),
+                                             history); // I know, this is bad, but this function is logically const, but board shouldn't be mutable, so...
     Color opposite_color = (color == Color::WHITE) ? Color::BLACK : Color::WHITE;
     return possible_moves.empty() && !KingController::is_attacked(king_position, opposite_color, board);
 }
 
-bool GameController::is_50_move() {
+bool GameController::is_50_move() const {
     return history.size() - last_move_for_50move == 100;
 }
 
-bool GameController::is_draw() {
+bool GameController::is_insufficient() const {
     std::vector<Type> white;
     std::vector<Type> black;
     int i = 0;
@@ -243,8 +241,13 @@ bool GameController::is_finished(const Intelligence &intelligence) const {
         return true;
     }
 
-    if (is_draw()) {
+    if (is_insufficient()) {
         UIController::finish_game(board, user_color, Result::POSITION_DRAW);
+        return true;
+    }
+
+    if (is_repetition()) {
+        UIController::finish_game(board, user_color, Result::REPETITION_DRAW);
         return true;
     }
     return false;
@@ -259,21 +262,23 @@ void GameController::play_game() {
     }
 
     int i = 0;
+    std::chrono::steady_clock::time_point begin;
+    std::chrono::steady_clock::time_point end;
+
+    ai.store_position(board);
+
     while (true) {
-        if (players[i] == &ui) {
-            UIController::show_board(board, user_color);
+        if (players[i] == &ui && !history.empty()) {
+            std::cout << "Last move was: " << (char) (history.back().from.x + 'a') << history.back().from.y + 1
+                      << " -> " << (char) (history.back().to.x + 'a') << history.back().to.y + 1 << std::endl;
+            std::cout << "Time: " << std::chrono::duration_cast<std::chrono::seconds>(end - begin).count() << "s\n";
         }
-        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+        begin = std::chrono::steady_clock::now();
         history.emplace_back(
                 players[i]->make_move(board, history.empty() ? Move() : history.back()));
-        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-        std::cout << "Time difference = "
-                  << static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count()) /
-                     1000
-                  << "[s]" << std::endl;
-        std::cout << "Last move was: " << (char) (history.back().from.x + 'a') << history.back().from.y + 1
-                  << " -> " << (char) (history.back().to.x + 'a') << history.back().to.y + 1 << std::endl;
-
+        end = std::chrono::steady_clock::now();
+        ai.store_position(board);
 
         if (board[history.back().from.y][history.back().from.x]._type == Type::PAWN ||
             board[history.back().to.y][history.back().to.x]._type != Type::EMPTY) {
@@ -283,4 +288,8 @@ void GameController::play_game() {
         if (is_finished(*players[1 - i])) return;
         i = 1 - i;
     }
+}
+
+bool GameController::is_repetition() const {
+    return ai.positions_count(board) == 3;
 }

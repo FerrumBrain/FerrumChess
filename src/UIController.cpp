@@ -151,6 +151,9 @@ void UIController::finish_game(const Board &board, Color player, Result result, 
         case Result::POSITION_DRAW:
             std::cout << "Insufficient material. Draw!" << std::endl;
             break;
+        case Result::REPETITION_DRAW:
+            std::cout << "Three times repetition. Draw!" << std::endl;
+            break;
         default:
             assert("Unknown result");
     }

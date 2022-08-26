@@ -58,7 +58,7 @@ Move ArtificialIntelligence::make_move(Board &board, Move last_move) {
         ans = opening_table[hash].first[distribution(gen)];
         promote_to = Type::EMPTY;
     } else {
-        std::tie(ans, promote_to) = search(board_copy, last_move, DEPTH, -BIG_INFINITY, BIG_INFINITY).second;
+        std::tie(ans, promote_to) = search(board_copy, last_move, 0, -BIG_INFINITY, BIG_INFINITY).second;
     }
 
     auto[from, to] = ans;
@@ -80,6 +80,7 @@ static bool is_insufficient(const std::vector<Figure> &figures) {
 
 void ArtificialIntelligence::undo_move(Board &board, Move last_move, const Figure &old_figure_from,
                                        const Figure &old_figure_to, int player, int i, int index_in_figures) {
+    history[this->hash]--;
     change_eval(player, -1, i, last_move.to);
     hash ^= zobrist_table[8 * last_move.to.y + last_move.to.x][2 * static_cast<int>(figures[player][i]._type) +
                                                                static_cast<int>(figures[player][i]._color)];
@@ -146,7 +147,7 @@ void ArtificialIntelligence::set_king_position(int player, Cell new_king_positio
 
 std::pair<int, std::pair<Move, Type>>
 ArtificialIntelligence::search(Board &board, Move last_move, int depth, int alpha, int beta) {
-    int player = (DEPTH - depth) % 2;
+    int player = depth % 2;
     Move ans;
     Type promote_to = Type::EMPTY;
 
@@ -159,16 +160,16 @@ ArtificialIntelligence::search(Board &board, Move last_move, int depth, int alph
     if (possible_moves.empty()) {
         if (KingController::is_attacked(player == 1 ? _opponent_king_position : _king_position,
                                         player == 1 ? _color : opposite(_color), board)) {
-            return {(depth + 1) * -INF, {Move(), Type::EMPTY}};
+            return {(DEPTH - depth + 1) * -INF, {Move(), Type::EMPTY}};
         }
         return {0, {Move(), Type::EMPTY}};
     }
 
-    if (is_insufficient(figures[0]) && is_insufficient(figures[1])) {
+    if (is_insufficient(figures[0]) && is_insufficient(figures[1]) || history[hash] == 3) {
         return {0, {Move(), Type::EMPTY}};
     }
 
-    if (depth == 0)
+    if (depth == DEPTH)
         return {evaluate(player), {Move(), Type::EMPTY}};
 
     for (auto const &[i, move_and_promote_to] : possible_moves) {
@@ -180,7 +181,7 @@ ArtificialIntelligence::search(Board &board, Move last_move, int depth, int alph
         // -------------------------------------------------------------------------------------------------------------
         int index_in_figures = make_pseudo_move(player, i, move, old_figure_to, board, last_move, possible_promote_to);
         // -------------------------------------------------------------------------------------------------------------
-        int cur_eval = -search(board, {old_coords, move.to}, depth - 1, -beta, -alpha).first;
+        int cur_eval = -search(board, {old_coords, move.to}, depth + 1, -beta, -alpha).first;
         // -------------------------------------------------------------------------------------------------------------
         undo_move(board, {old_coords, move.to}, old_figure_from, old_figure_to, player, i, index_in_figures);
         // -------------------------------------------------------------------------------------------------------------
@@ -343,6 +344,8 @@ int ArtificialIntelligence::make_pseudo_move(int player, int i, Move move, const
     hash ^= zobrist_table[8 * move.to.y + move.to.x][2 * static_cast<int>(figures[player][i]._type) +
                                                      static_cast<int>(figures[player][i]._color)];
 
+    history[this->hash]++;
+
     return index_in_figures;
 }
 
@@ -391,7 +394,7 @@ void ArtificialIntelligence::change_eval(int player, int sign, int i, Cell cell)
     }
 }
 
-void ArtificialIntelligence::hash_position(const Board &board) {
+void ArtificialIntelligence::hash_position(const Board &board) const {
     hash = 0;
 
     for (int i = 0; i < 8; i++) {
@@ -434,4 +437,14 @@ ArtificialIntelligence::ArtificialIntelligence(Color color, Cell king_position) 
     }
 
     input.close();
+}
+
+int ArtificialIntelligence::positions_count(const Board &board) const {
+    hash_position(board);
+    return history.at(hash);
+}
+
+void ArtificialIntelligence::store_position(const Board &board) {
+    hash_position(board);
+    history[hash]++;
 }

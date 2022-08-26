@@ -21,7 +21,8 @@ enum class Result {
     //RESIGN_WHITE_WIN,
     STALEMATE_DRAW,
     FIFTY_MOVE_DRAW,
-    POSITION_DRAW
+    POSITION_DRAW,
+    REPETITION_DRAW
 };
 
 namespace UIController {
