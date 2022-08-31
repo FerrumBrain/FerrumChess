@@ -25,7 +25,12 @@ public:
     int positions_count(const Board &board) const;
 
     void store_position(const Board &board);
+
 private:
+#ifdef DEBUG
+    std::vector<Move> stack;
+#endif
+
     std::mt19937_64 gen;
     std::vector<std::vector<Figure>> figures = {{},
                                                 {}};

@@ -165,7 +165,7 @@ std::vector<Move> get_possible_moves(Color color, Cell king_position, Board &boa
                                                                                                 history.empty()
                                                                                                 ? Move()
                                                                                                 : history.back(),
-                                                                                                king_position);
+                                                                                                king_position, false);
             for (auto to : current_moves) {
                 possible_moves.push_back({{j, i}, to});
             }
@@ -271,7 +271,7 @@ void GameController::play_game() {
         if (players[i] == &ui && !history.empty()) {
             std::cout << "Last move was: " << (char) (history.back().from.x + 'a') << history.back().from.y + 1
                       << " -> " << (char) (history.back().to.x + 'a') << history.back().to.y + 1 << std::endl;
-            std::cout << "Time: " << std::chrono::duration_cast<std::chrono::seconds>(end - begin).count() << "s\n";
+            std::cout << "Time: " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() / 1e9 << "s\n";
         }
 
         begin = std::chrono::steady_clock::now();

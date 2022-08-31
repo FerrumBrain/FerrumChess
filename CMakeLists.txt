@@ -18,5 +18,8 @@ set(CLIENT_PROJECT_SOURCES
         src/UIController.cpp
         )
 add_executable(FerrumChess ${CLIENT_PROJECT_SOURCES})
+if (DEBUG_LEVEL)
+    add_compile_definitions(FerrumChess DEBUG)
+endif ()
 add_executable(OpeningBook database/aggregate_openings.cpp)
 target_link_libraries(FerrumChess ${CLIENT_LIBS})
