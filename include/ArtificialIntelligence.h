@@ -186,13 +186,10 @@ private:
 
     void set_king_position(int player, Cell new_king_position);
 
-    std::vector<std::pair<int, std::pair<Move, Type>>> get_possible_moves(int player, Move last_move, Board &board);
+    std::vector<std::pair<int, std::pair<int, std::pair<Move, Type>>>> get_possible_moves(int player, Move last_move, Board &board);
 
     int make_pseudo_move(int player, int i, Move move, const Figure &old_figure_to, Board &board, Move last_move,
                          Type possible_promote_to);
-
-    void reorder_moves(int player, Move last_move, Board &board,
-                       std::vector<std::pair<int, std::pair<Move, Type>>> &possible_moves);
 
     void fill_figures(const Board &board);
 
@@ -203,4 +200,6 @@ private:
     void hash_position(const Board &board) const;
 
     int mop_up_eval(int losing_player) const;
+
+    int priority(int player, Move last_move, const std::pair<int, std::pair<Move, Type>> &a, Board &board);
 };
