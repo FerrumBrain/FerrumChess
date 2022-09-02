@@ -58,7 +58,8 @@ Move ArtificialIntelligence::make_move(Board &board, Move last_move) {
         ans = opening_table[hash].first[distribution(gen)];
         promote_to = Type::EMPTY;
     } else {
-        std::tie(ans, promote_to) = search(board_copy, last_move, 0, -BIG_INFINITY, BIG_INFINITY).second;
+        std::tie(ans, promote_to) = search(board_copy, last_move, 0, -BIG_INFINITY, BIG_INFINITY,
+                                           Priority::NOTHING).second;
     }
 
     auto[from, to] = ans;
@@ -146,7 +147,8 @@ void ArtificialIntelligence::set_king_position(int player, Cell new_king_positio
 }
 
 std::pair<int, std::pair<Move, Type>>
-ArtificialIntelligence::search(Board &board, Move last_move, int depth, int alpha, int beta) {
+ArtificialIntelligence::search(Board &board, Move last_move, int depth, int alpha, int beta,
+                               Priority last_move_priority) {
     int player = depth % 2;
     Move ans;
     Type promote_to = Type::EMPTY;
@@ -160,9 +162,12 @@ ArtificialIntelligence::search(Board &board, Move last_move, int depth, int alph
         return {(DEPTH - depth + 1) * -INF, {Move(), Type::EMPTY}};
     }
 
-    auto possible_moves = get_possible_moves(player, last_move, board);
+    auto possible_moves = get_possible_moves(player, last_move, board, last_move_priority != Priority::CHECK);
 
     if (possible_moves.empty()) {
+        if(last_move_priority == Priority::CHECK) {
+            return {(DEPTH - depth + 1) * -INF, {Move(), Type::EMPTY}};
+        }
         return {0, {Move(), Type::EMPTY}};
     }
 
@@ -176,19 +181,17 @@ ArtificialIntelligence::search(Board &board, Move last_move, int depth, int alph
     for (auto const &[priority, number_move_promotion] : possible_moves) {
         auto const &[i, move_and_promote_to] = number_move_promotion;
         auto move = move_and_promote_to.first;
-
-#ifdef DEBUG
-        stack.emplace_back(move);
-#endif
-
         auto possible_promote_to = move_and_promote_to.second;
         Cell old_coords = figures[player][i]._coords;
         auto old_figure_from = figures[player][i];
         Figure old_figure_to = board[move.to.y][move.to.x];
         // -------------------------------------------------------------------------------------------------------------
         int index_in_figures = make_pseudo_move(player, i, move, old_figure_to, board, last_move, possible_promote_to);
+#ifdef DEBUG
+        stack.emplace_back(move);
+#endif
         // -------------------------------------------------------------------------------------------------------------
-        int cur_eval = -search(board, {old_coords, move.to}, depth + 1, -beta, -alpha).first;
+        int cur_eval = -search(board, {old_coords, move.to}, depth + 1, -beta, -alpha, priority).first;
         // -------------------------------------------------------------------------------------------------------------
         undo_move(board, {old_coords, move.to}, old_figure_from, old_figure_to, player, i, index_in_figures);
 #ifdef DEBUG
@@ -212,8 +215,9 @@ ArtificialIntelligence::search(Board &board, Move last_move, int depth, int alph
     return {alpha, {ans, promote_to}};
 }
 
-int ArtificialIntelligence::priority(int player, Move last_move, const std::pair<int, std::pair<Move, Type>> &a,
-                                     Board &board) {
+ArtificialIntelligence::Priority
+ArtificialIntelligence::priority(int player, Move last_move, const std::pair<int, std::pair<Move, Type>> &a,
+                                 Board &board) {
     auto is_attack = [this, &board, &player, &last_move](Move move, Type promote_to, int i) {
         Cell old_coords = move.from;
         auto old_figure_from = board[move.from.y][move.from.x];
@@ -248,27 +252,28 @@ int ArtificialIntelligence::priority(int player, Move last_move, const std::pair
     Move move = a.second.first;
     Type promote_to = a.second.second;
 
-    int priority = 0;
+    Priority priority = Priority::NOTHING;
 
-    if (is_check(move, promote_to, a.first)) priority = 3;
+    if (is_check(move, promote_to, a.first)) priority = Priority::CHECK;
 
     if (is_capture(move, promote_to, a.first)) {
         if (board[move.to.y][move.to.x]._type == Type::KING) {
-            priority = 4;
-        } else if (priority == 0) {
-            priority = 2;
+            priority = Priority::KING_TAKE;
+        } else if (priority == Priority::NOTHING) {
+            priority = Priority::CAPTURE;
         }
     }
 
-    if (priority == 0 && is_attack(move, promote_to, a.first)) priority = 1;
+    if (priority == Priority::NOTHING && is_attack(move, promote_to, a.first)) priority = Priority::ATTACK;
 
     return priority;
 }
 
-std::vector<std::pair<int, std::pair<int, std::pair<Move, Type>>>> ArtificialIntelligence::get_possible_moves(int player,
-                                                                                              Move last_move,
-                                                                                              Board &board) {
-    std::vector<std::pair<int, std::pair<int, std::pair<Move, Type>>>> possible_moves;
+std::vector<std::pair<ArtificialIntelligence::Priority, std::pair<int, std::pair<Move, Type>>>>
+ArtificialIntelligence::get_possible_moves(int player,
+                                           Move last_move,
+                                           Board &board, bool king_take) {
+    std::vector<std::pair<Priority, std::pair<int, std::pair<Move, Type>>>> possible_moves;
     std::vector<Cell> current_cells;
     for (int i = 0; i < figures[player].size(); i++) {
         if (figures[player][i]._type == Type::EMPTY)
@@ -277,7 +282,7 @@ std::vector<std::pair<int, std::pair<int, std::pair<Move, Type>>>> ArtificialInt
                                                                                   last_move,
                                                                                   player == 0 ? _king_position
                                                                                               : _opponent_king_position,
-                                                                                  true);
+                                                                                  king_take);
         std::pair<int, std::pair<Move, Type>> cur;
         for (auto to : current_cells) {
             if (figures[player][i]._type == Type::PAWN && to.y % 7 == 0) {
@@ -297,8 +302,10 @@ std::vector<std::pair<int, std::pair<int, std::pair<Move, Type>>>> ArtificialInt
     }
 
     std::ranges::sort(possible_moves.begin(), possible_moves.end(),
-                      [](const std::pair<int, std::pair<int, std::pair<Move, Type>>> &a,
-                         const std::pair<int, std::pair<int, std::pair<Move, Type>>> &b) { return a.first > b.first; });
+                      [](const std::pair<Priority, std::pair<int, std::pair<Move, Type>>> &a,
+                         const std::pair<Priority, std::pair<int, std::pair<Move, Type>>> &b) {
+                          return a.first > b.first;
+                      });
 
     return possible_moves;
 }

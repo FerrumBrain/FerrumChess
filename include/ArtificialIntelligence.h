@@ -179,14 +179,24 @@ private:
     };
     std::vector<int> gamephase_values = {0, 1, 1, 2, 4, 0};
 
+    enum class Priority {
+        NOTHING = 0,
+        ATTACK = 1,
+        CAPTURE = 2,
+        CHECK = 3,
+        KING_TAKE = 4
+    };
+
     void undo_move(Board &board, Move last_move, const Figure &old_figure_from, const Figure &old_figure_to, int player,
                    int i, int index_in_figures);
 
-    std::pair<int, std::pair<Move, Type>> search(Board &board, Move last_move, int depth, int alpha, int beta);
+    std::pair<int, std::pair<Move, Type>>
+    search(Board &board, Move last_move, int depth, int alpha, int beta, Priority last_move_priority);
 
     void set_king_position(int player, Cell new_king_position);
 
-    std::vector<std::pair<int, std::pair<int, std::pair<Move, Type>>>> get_possible_moves(int player, Move last_move, Board &board);
+    std::vector<std::pair<Priority, std::pair<int, std::pair<Move, Type>>>>
+    get_possible_moves(int player, Move last_move, Board &board, bool king_take);
 
     int make_pseudo_move(int player, int i, Move move, const Figure &old_figure_to, Board &board, Move last_move,
                          Type possible_promote_to);
@@ -201,5 +211,5 @@ private:
 
     int mop_up_eval(int losing_player) const;
 
-    int priority(int player, Move last_move, const std::pair<int, std::pair<Move, Type>> &a, Board &board);
+    Priority priority(int player, Move last_move, const std::pair<int, std::pair<Move, Type>> &a, Board &board);
 };
